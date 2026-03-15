@@ -331,48 +331,60 @@ const Account = () => {
                           />
                         </div>
                       ) : phoneBindStep === 'input' ? (
-                        <form onSubmit={handleRequestPhoneBind} className="flex gap-2 items-stretch">
-                          <div className="flex flex-1 rounded-sm border border-border/50 bg-background focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/30 overflow-hidden">
-                            <div className="flex items-center gap-2 pl-4 pr-3 border-r border-border/50 shrink-0">
-                              <Phone className="w-4 h-4 text-muted-foreground" />
-                              <span className="text-sm text-muted-foreground">+91</span>
+                        <form onSubmit={handleRequestPhoneBind} className="space-y-2">
+                          <div className="flex gap-2 items-stretch">
+                            <div className="flex flex-1 rounded-sm border border-border/50 bg-background focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/30 overflow-hidden">
+                              <div className="flex items-center gap-2 pl-4 pr-3 border-r border-border/50 shrink-0">
+                                <Phone className="w-4 h-4 text-muted-foreground" />
+                                <span className="text-sm text-muted-foreground">+91</span>
+                              </div>
+                              <Input
+                                type="tel"
+                                inputMode="numeric"
+                                value={phoneToBind}
+                                onChange={(e) => setPhoneToBind(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                                placeholder="Enter 10-digit mobile number"
+                                className="flex-1 h-14 py-6 pl-3 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
+                              />
                             </div>
-                            <Input
-                              type="tel"
-                              inputMode="numeric"
-                              value={phoneToBind}
-                              onChange={(e) => setPhoneToBind(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                              placeholder="98765 43210"
-                              className="flex-1 h-14 py-6 pl-3 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
-                            />
+                            <Button type="submit" disabled={isBindingPhone || phoneToBind.replace(/\D/g, '').length < 10} className="h-14 shrink-0 px-6">
+                              {isBindingPhone ? 'Sending...' : 'Send OTP'}
+                            </Button>
                           </div>
-                          <Button type="submit" disabled={isBindingPhone || phoneToBind.replace(/\D/g, '').length < 10} className="h-14 shrink-0 px-6">
-                            {isBindingPhone ? 'Sending...' : 'Send OTP'}
-                          </Button>
+                          <p className="text-[11px] text-muted-foreground">We&apos;ll send an OTP to this number. Enter mobile first, then verify.</p>
                         </form>
                       ) : (
-                        <form onSubmit={handleVerifyPhoneBind} className="flex gap-2 items-stretch">
-                          <Input
-                            type="text"
-                            inputMode="numeric"
-                            maxLength={6}
-                            value={otpForPhone}
-                            onChange={(e) => setOtpForPhone(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                            placeholder="000000"
-                            className="flex-1 h-14 py-6 text-center text-lg tracking-[0.3em] bg-background border-border/50 focus:border-primary/50"
-                          />
-                          <Button type="submit" disabled={isBindingPhone || otpForPhone.length !== 6} className="h-14 shrink-0 px-6">
-                            {isBindingPhone ? 'Verifying...' : 'Verify'}
-                          </Button>
-                        </form>
+                        <div className="space-y-3">
+                          {/* Always show number first, then OTP — no direct OTP */}
+                          <div className="rounded-sm border border-border/50 bg-muted/30 overflow-hidden">
+                            <div className="flex items-center gap-2 pl-4 pr-4 py-3">
+                              <Phone className="w-4 h-4 text-muted-foreground shrink-0" />
+                              <span className="text-sm text-muted-foreground">+91</span>
+                              <span className="font-medium">{phoneToBind.replace(/\D/g, '').length >= 10 ? formatPhoneDisplay(phoneToBind) : phoneToBind || '—'}</span>
+                              <button type="button" onClick={() => { setPhoneBindStep('input'); setOtpForPhone(''); }} className="ml-auto text-xs text-primary hover:text-primary/80">Use different number</button>
+                            </div>
+                          </div>
+                          <form onSubmit={handleVerifyPhoneBind} className="flex gap-2 items-stretch">
+                            <Input
+                              type="text"
+                              inputMode="numeric"
+                              maxLength={6}
+                              value={otpForPhone}
+                              onChange={(e) => setOtpForPhone(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                              placeholder="000000"
+                              className="flex-1 h-14 py-6 text-center text-lg tracking-[0.3em] bg-background border-border/50 focus:border-primary/50"
+                            />
+                            <Button type="submit" disabled={isBindingPhone || otpForPhone.length !== 6} className="h-14 shrink-0 px-6">
+                              {isBindingPhone ? 'Verifying...' : 'Verify'}
+                            </Button>
+                          </form>
+                        </div>
                       )}
-                      {!hasAuthPhone && (
-                        <p className="text-[11px] text-muted-foreground">
-                          {phoneBindStep === 'input' ? 'We&apos;ll send an OTP to bind your phone.' : `Code sent to ${formatPhoneDisplay(phoneToBind)}`}
-                          {phoneBindStep === 'otp' && (
-                            <button type="button" onClick={() => setPhoneBindStep('input')} className="ml-2 text-primary hover:text-primary/80">Use different number</button>
-                          )}
-                        </p>
+                      {!hasAuthPhone && phoneBindStep === 'input' && (
+                        <p className="text-[11px] text-muted-foreground">Enter your 10-digit mobile number above, then tap Send OTP.</p>
+                      )}
+                      {!hasAuthPhone && phoneBindStep === 'otp' && (
+                        <p className="text-[11px] text-muted-foreground">Code sent to the number above. Enter the 6-digit OTP, or use a different number.</p>
                       )}
                     </div>
 
