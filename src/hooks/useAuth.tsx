@@ -317,7 +317,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   /** Request phone binding (sends OTP). Call verifyPhoneChange with the OTP to complete. */
   const updateUserPhone = async (phone: string) => {
     const normalized = normalizePhone(phone);
-    const { error } = await supabase.auth.updateUser({
+    const { data, error } = await supabase.auth.updateUser({
       phone: normalized,
       options: { channel: 'sms' },
     });
@@ -325,11 +325,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const msg = error.message.toLowerCase();
       if (msg.includes('phone provider') || msg.includes('unsupported')) {
         toast.error('SMS is not configured. Enable Phone provider in Supabase.');
-      } else {
-        toast.error(error.message);
+        throw error;
       }
+      if (msg.includes('already been registered') || msg.includes('already registered')) {
+        const { data: { user: freshUser } } = await supabase.auth.getUser();
+        const existingPhone = freshUser?.phone ? normalizePhone(freshUser.phone) : null;
+        if (existingPhone === normalized) {
+          await ensureProfileBinding(freshUser!);
+          await fetchProfile(freshUser!.id);
+          setUser(freshUser ?? null);
+          toast.success('This number is already linked to your account.');
+          return;
+        }
+        toast.error('This number is already used by another account. Use a different number or sign in with that phone.');
+        throw error;
+      }
+      toast.error(error.message);
       throw error;
     }
+    setUser(data.user);
     toast.success('OTP sent to your phone.');
   };
 
