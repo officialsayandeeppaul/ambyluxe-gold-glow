@@ -7,15 +7,24 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { Layout } from '@/components/layout/Layout';
 import { User, Mail, Phone, MapPin, LogOut, Shield, Package, Heart } from 'lucide-react';
+import { ProfileAvatar } from '@/components/ProfileAvatar';
 
 const Account = () => {
-  const { user, profile, isAdmin, isLoading, signOut, updateProfile } = useAuth();
+  const { user, profile, isAdmin, isLoading, signOut, updateProfile, updateUserEmail, updateUserPhone, verifyPhoneChange } = useAuth();
   const navigate = useNavigate();
   
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
+  const [emailToBind, setEmailToBind] = useState('');
+  const [phoneToBind, setPhoneToBind] = useState('');
+  const [otpForPhone, setOtpForPhone] = useState('');
+  const [phoneBindStep, setPhoneBindStep] = useState<'input' | 'otp'>('input');
   const [isSaving, setIsSaving] = useState(false);
+  const [isBindingEmail, setIsBindingEmail] = useState(false);
+  const [isBindingPhone, setIsBindingPhone] = useState(false);
+  const [emailRateLimited, setEmailRateLimited] = useState(false);
+  const [loadTimeout, setLoadTimeout] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -26,36 +35,128 @@ const Account = () => {
   useEffect(() => {
     if (profile) {
       setFullName(profile.full_name || '');
-      setPhone(profile.phone || '');
+      setPhone(user?.phone || profile.phone || '');
       setAddress(profile.address || '');
     }
-  }, [profile]);
+  }, [profile, user?.phone]);
+
+  /** Safety: if loading hangs > 8s, show fallback */
+  useEffect(() => {
+    if (!isLoading) return;
+    const t = setTimeout(() => setLoadTimeout(true), 8000);
+    return () => clearTimeout(t);
+  }, [isLoading]);
+
+  /** Restore pending phone verification after refresh (user has new_phone + phone_change_sent_at) */
+  useEffect(() => {
+    const u = user as { new_phone?: string; phone_change_sent_at?: string } | null;
+    if (!u?.phone && u?.new_phone && u?.phone_change_sent_at) {
+      const digits = u.new_phone.replace(/\D/g, '');
+      const ten = digits.length >= 10 ? digits.slice(-10) : digits;
+      setPhoneToBind(ten);
+      setPhoneBindStep('otp');
+    }
+  }, [user]);
 
   const handleSaveProfile = async () => {
     setIsSaving(true);
     try {
       await updateProfile({
         full_name: fullName,
-        phone,
+        phone: phone || undefined,
         address,
       });
-    } catch (error) {
+    } catch {
       // Error handled in hook
     } finally {
       setIsSaving(false);
     }
   };
 
+  const handleBindEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!emailToBind.trim()) return;
+    setEmailRateLimited(false);
+    setIsBindingEmail(true);
+    try {
+      await updateUserEmail(emailToBind);
+      setEmailToBind('');
+    } catch (err: unknown) {
+      const msg = String((err as { message?: string })?.message || '').toLowerCase();
+      const code = (err as { code?: string })?.code;
+      if (msg.includes('rate limit') || code === 'over_email_send_rate_limit') {
+        setEmailRateLimited(true);
+      }
+    } finally {
+      setIsBindingEmail(false);
+    }
+  };
+
+  const handleRequestPhoneBind = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const digits = phoneToBind.replace(/\D/g, '');
+    if (digits.length < 10) return;
+    setIsBindingPhone(true);
+    try {
+      await updateUserPhone(phoneToBind);
+      setPhoneBindStep('otp');
+      setOtpForPhone('');
+    } catch {
+      // Error handled in hook
+    } finally {
+      setIsBindingPhone(false);
+    }
+  };
+
+  const handleVerifyPhoneBind = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (otpForPhone.length !== 6) return;
+    setIsBindingPhone(true);
+    try {
+      await verifyPhoneChange(phoneToBind, otpForPhone);
+      setPhoneToBind('');
+      setOtpForPhone('');
+      setPhoneBindStep('input');
+    } catch {
+      // Error handled in hook
+    } finally {
+      setIsBindingPhone(false);
+    }
+  };
+
+  const formatPhoneDisplay = (val: string) => {
+    const d = val.replace(/\D/g, '');
+    const ten = d.length >= 10 ? d.slice(-10) : d;
+    if (ten.length <= 5) return ten.replace(/(\d{2})(\d{0,3})/, '+91 $1 $2').trim();
+    return ('+91 ' + ten.slice(0, 5) + ' ' + ten.slice(5, 10)).trim();
+  };
+
+  const hasAuthEmail = !!user?.email;
+  const hasAuthPhone = !!user?.phone;
+
   const handleSignOut = async () => {
     await signOut();
     navigate('/');
   };
 
-  if (isLoading) {
+  if (isLoading && !loadTimeout) {
     return (
       <Layout>
         <div className="min-h-screen flex items-center justify-center">
           <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      </Layout>
+    );
+  }
+
+  if (loadTimeout && !user) {
+    return (
+      <Layout>
+        <div className="min-h-screen flex flex-col items-center justify-center gap-6">
+          <p className="text-muted-foreground text-center">Having trouble loading your account.</p>
+          <Button onClick={() => navigate('/auth')} variant="outline">
+            Sign In Again
+          </Button>
         </div>
       </Layout>
     );
@@ -86,12 +187,12 @@ const Account = () => {
               <div className="space-y-4">
                 <div className="glass-card p-6 rounded-sm">
                   <div className="flex items-center gap-4 mb-6">
-                    <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                      {profile?.avatar_url ? (
-                        <img src={profile.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
-                      ) : (
-                        <User className="w-6 h-6 text-primary" />
-                      )}
+                    <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
+                      <ProfileAvatar
+                        avatarUrl={profile?.avatar_url ?? null}
+                        seed={user?.id ?? user?.email ?? undefined}
+                        className="w-full h-full"
+                      />
                     </div>
                     <div>
                       <p className="font-medium">{profile?.full_name || 'User'}</p>
@@ -159,16 +260,42 @@ const Account = () => {
                       <Label htmlFor="email" className="text-xs uppercase tracking-wider">
                         Email Address
                       </Label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input
-                          id="email"
-                          type="email"
-                          value={user?.email || ''}
-                          disabled
-                          className="pl-10 py-6 bg-muted/30 border-border/30"
-                        />
-                      </div>
+                      {hasAuthEmail ? (
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <Input
+                            id="email"
+                            type="email"
+                            value={user?.email || ''}
+                            disabled
+                            className="pl-10 py-6 bg-muted/30 border-border/30"
+                          />
+                        </div>
+                      ) : (
+                        <form onSubmit={handleBindEmail} className="space-y-2">
+                          <div className="flex gap-2 items-stretch">
+                            <div className="relative flex-1">
+                              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                              <Input
+                                id="email"
+                                type="email"
+                                value={emailToBind}
+                                onChange={(e) => { setEmailToBind(e.target.value); setEmailRateLimited(false); }}
+                                placeholder="Add your email"
+                                className="pl-10 py-6 h-14 bg-background border-border/50 focus:border-primary/50"
+                              />
+                            </div>
+                            <Button type="submit" disabled={isBindingEmail || !emailToBind.trim() || emailRateLimited} className="h-14 shrink-0 px-6">
+                              {isBindingEmail ? 'Sending...' : 'Verify Email'}
+                            </Button>
+                          </div>
+                          {emailRateLimited ? (
+                            <p className="text-sm text-amber-500/90">Too many verification emails. Please try again in 30–60 minutes.</p>
+                          ) : (
+                            <p className="text-[11px] text-muted-foreground">We&apos;ll send a verification link to bind your email.</p>
+                          )}
+                        </form>
+                      )}
                     </div>
 
                     <div className="space-y-2">
@@ -192,17 +319,61 @@ const Account = () => {
                       <Label htmlFor="phone" className="text-xs uppercase tracking-wider">
                         Phone Number
                       </Label>
-                      <div className="relative">
-                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input
-                          id="phone"
-                          type="tel"
-                          value={phone}
-                          onChange={(e) => setPhone(e.target.value)}
-                          placeholder="+91 98765 43210"
-                          className="pl-10 py-6 bg-background border-border/50 focus:border-primary/50"
-                        />
-                      </div>
+                      {hasAuthPhone ? (
+                        <div className="relative">
+                          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <Input
+                            id="phone"
+                            type="tel"
+                            value={formatPhoneDisplay(phone)}
+                            disabled
+                            className="pl-10 py-6 bg-muted/30 border-border/30"
+                          />
+                        </div>
+                      ) : phoneBindStep === 'input' ? (
+                        <form onSubmit={handleRequestPhoneBind} className="flex gap-2 items-stretch">
+                          <div className="flex flex-1 rounded-sm border border-border/50 bg-background focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/30 overflow-hidden">
+                            <div className="flex items-center gap-2 pl-4 pr-3 border-r border-border/50 shrink-0">
+                              <Phone className="w-4 h-4 text-muted-foreground" />
+                              <span className="text-sm text-muted-foreground">+91</span>
+                            </div>
+                            <Input
+                              type="tel"
+                              inputMode="numeric"
+                              value={phoneToBind}
+                              onChange={(e) => setPhoneToBind(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                              placeholder="98765 43210"
+                              className="flex-1 h-14 py-6 pl-3 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
+                            />
+                          </div>
+                          <Button type="submit" disabled={isBindingPhone || phoneToBind.replace(/\D/g, '').length < 10} className="h-14 shrink-0 px-6">
+                            {isBindingPhone ? 'Sending...' : 'Send OTP'}
+                          </Button>
+                        </form>
+                      ) : (
+                        <form onSubmit={handleVerifyPhoneBind} className="flex gap-2 items-stretch">
+                          <Input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={6}
+                            value={otpForPhone}
+                            onChange={(e) => setOtpForPhone(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                            placeholder="000000"
+                            className="flex-1 h-14 py-6 text-center text-lg tracking-[0.3em] bg-background border-border/50 focus:border-primary/50"
+                          />
+                          <Button type="submit" disabled={isBindingPhone || otpForPhone.length !== 6} className="h-14 shrink-0 px-6">
+                            {isBindingPhone ? 'Verifying...' : 'Verify'}
+                          </Button>
+                        </form>
+                      )}
+                      {!hasAuthPhone && (
+                        <p className="text-[11px] text-muted-foreground">
+                          {phoneBindStep === 'input' ? 'We&apos;ll send an OTP to bind your phone.' : `Code sent to ${formatPhoneDisplay(phoneToBind)}`}
+                          {phoneBindStep === 'otp' && (
+                            <button type="button" onClick={() => setPhoneBindStep('input')} className="ml-2 text-primary hover:text-primary/80">Use different number</button>
+                          )}
+                        </p>
+                      )}
                     </div>
 
                     <div className="space-y-2">

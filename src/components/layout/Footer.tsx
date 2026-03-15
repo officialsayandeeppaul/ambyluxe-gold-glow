@@ -83,13 +83,12 @@ export const Footer = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-10 lg:gap-16">
           {/* Brand Column */}
           <div className="col-span-2 lg:col-span-1">
-            <Link to="/" className="inline-block mb-6">
-              <span className="text-lg font-display font-light tracking-[0.2em] text-gold-gradient">
-                AMBY LUXE
-              </span>
-              <span className="block text-[9px] uppercase tracking-[0.5em] text-primary/60 mt-0.5">
-                Jewels
-              </span>
+            <Link to="/" className="inline-block mb-6 group">
+              <img
+                src="/amby_logo.png"
+                alt="Amby Luxe Jewels"
+                className="h-14 w-auto object-contain brightness-100 group-hover:brightness-110 transition-all duration-300 drop-shadow-[0_0_15px_rgba(212,175,55,0.12)]"
+              />
             </Link>
             <p className="text-xs text-muted-foreground mb-6 leading-relaxed font-light">
               Crafting timeless elegance since 1998. Every piece tells a story of artistry, heritage, and enduring beauty.

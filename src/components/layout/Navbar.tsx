@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, ShoppingBag, Heart, User, Search, LogIn } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { useAuth } from '@/hooks/useAuth';
+import { ProfileAvatar } from '@/components/ProfileAvatar';
 
 const navLinks = [
   { name: 'Collections', href: '/collections' },
@@ -40,7 +41,7 @@ export const Navbar = () => {
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-700 ${
           isScrolled
             ? 'bg-background/90 backdrop-blur-xl border-b border-border/30 py-4'
-            : 'bg-transparent py-6'
+            : 'bg-background/40 backdrop-blur-md py-6'
         }`}
       >
         <div className="container mx-auto px-6">
@@ -69,19 +70,14 @@ export const Navbar = () => {
             </div>
 
             {/* Logo */}
-            <Link to="/" className="flex flex-col items-center group">
-              <motion.div
-                whileHover={{ scale: 1.02 }}
+            <Link to="/" className="flex items-center justify-center group">
+              <motion.img
+                src="/amby_logo.png"
+                alt="Amby Luxe Jewels"
+                whileHover={{ scale: 1.03 }}
                 transition={{ duration: 0.3 }}
-                className="text-center"
-              >
-                <span className="text-xl md:text-2xl font-display font-light tracking-[0.2em] text-gold-gradient">
-                  AMBY LUXE
-                </span>
-                <span className="block text-[9px] uppercase tracking-[0.5em] text-primary/60 mt-0.5 font-body font-light">
-                  Jewels
-                </span>
-              </motion.div>
+                className="h-12 md:h-14 w-auto object-contain select-none brightness-100 hover:brightness-110 transition-all duration-300 drop-shadow-[0_0_20px_rgba(212,175,55,0.15)] hover:drop-shadow-[0_0_30px_rgba(212,175,55,0.25)]"
+              />
             </Link>
 
             {/* Right Navigation - Desktop */}
@@ -109,11 +105,11 @@ export const Navbar = () => {
                     to="/account"
                     className="hidden md:flex items-center gap-2 text-foreground/60 hover:text-primary transition-colors"
                   >
-                    {profile?.avatar_url ? (
-                      <img src={profile.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover" />
-                    ) : (
-                      <User className="h-4 w-4" />
-                    )}
+                    <ProfileAvatar
+                      avatarUrl={profile?.avatar_url ?? null}
+                      seed={user?.id ?? user?.email ?? undefined}
+                      className="w-6 h-6"
+                    />
                   </Link>
                 ) : (
                   <Link
@@ -180,9 +176,13 @@ export const Navbar = () => {
 
                 {/* Logo */}
                 <div className="mb-12">
-                  <span className="text-lg font-display font-light tracking-[0.2em] text-gold-gradient">
-                    AMBY LUXE
-                  </span>
+                  <Link to="/" onClick={() => setIsOpen(false)}>
+                    <img
+                      src="/amby_logo.png"
+                      alt="Amby Luxe Jewels"
+                      className="h-10 w-auto object-contain brightness-100 hover:brightness-110 transition-all duration-300"
+                    />
+                  </Link>
                 </div>
 
                 <div className="space-y-6">

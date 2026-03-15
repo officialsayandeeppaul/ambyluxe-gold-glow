@@ -30,6 +30,7 @@ export const Hero = () => {
         />
         <div className="absolute inset-0 bg-gradient-to-r from-background via-background/80 to-background/40" />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-background/50" />
+        <div className="absolute top-0 left-0 right-0 h-36 bg-gradient-to-b from-background/90 to-transparent pointer-events-none" />
       </motion.div>
 
       {/* Animated Lines */}
@@ -50,7 +51,7 @@ export const Hero = () => {
 
       <motion.div 
         style={{ opacity }}
-        className="container mx-auto px-6 relative z-10 pt-20"
+        className="container mx-auto px-6 relative z-10 pt-28"
       >
         <div className="max-w-4xl">
           {/* Overline */}

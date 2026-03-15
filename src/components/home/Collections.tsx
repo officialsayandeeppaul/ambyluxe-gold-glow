@@ -103,7 +103,7 @@ export const Collections = () => {
                       <motion.img
                         src={collection.image}
                         alt={collection.name}
-                        className="w-full h-full object-cover transition-transform duration-[1.2s] group-hover:scale-110"
+                        className="w-full h-full object-cover transition-transform duration-1200 group-hover:scale-110"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity duration-700" />
                       

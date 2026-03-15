@@ -30,11 +30,36 @@ interface AuthContextType {
   signUp: (email: string, password: string, fullName?: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
+  signInWithMagicLink: (email: string) => Promise<void>;
+  sendPhoneOtp: (phone: string) => Promise<void>;
+  verifyPhoneOtp: (phone: string, token: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<void>;
+  refreshProfile: () => Promise<void>;
+  updateUserEmail: (email: string) => Promise<void>;
+  updateUserPhone: (phone: string) => Promise<void>;
+  verifyPhoneChange: (phone: string, token: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+/** Normalize phone to E.164 for India: always +91 followed by exactly 10 digits. */
+function normalizePhone(phone: string): string {
+  const digits = phone.replace(/\D/g, '');
+  const len = digits.length;
+  let ten = digits;
+  if (len > 10) {
+    if (len >= 12 && digits.startsWith('91')) {
+      ten = digits.slice(2, 12);
+    } else {
+      ten = digits.slice(-10);
+    }
+  } else if (len < 10) {
+    ten = digits;
+  }
+  return '+91' + ten;
+}
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -74,19 +99,48 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const refreshProfile = async () => {
+    if (user) await fetchProfile(user.id);
+  };
+
+  /** Ensure profile exists and is synced with auth user metadata (profile binding) */
+  const ensureProfileBinding = async (authUser: User) => {
+    try {
+      const meta = authUser.user_metadata || {};
+      const fullName = meta.full_name || meta.name || meta.email;
+      const avatarUrl = meta.avatar_url;
+      const phone = authUser.phone || meta.phone;
+
+      const { data: existing } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', authUser.id)
+        .maybeSingle();
+
+      if (existing) {
+        const updates: Record<string, unknown> = {};
+        if (fullName) updates.full_name = fullName;
+        if (avatarUrl) updates.avatar_url = avatarUrl;
+        if (phone) updates.phone = phone;
+        if (Object.keys(updates).length > 0) {
+          await supabase.from('profiles').update(updates).eq('user_id', authUser.id);
+        }
+      }
+    } catch (err) {
+      console.error('Profile binding error:', err);
+    }
+  };
+
   useEffect(() => {
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
-        
+
         if (session?.user) {
-          // Use setTimeout to avoid blocking the auth callback
-          setTimeout(() => {
-            fetchProfile(session.user.id);
-            fetchRoles(session.user.id);
-          }, 0);
+          ensureProfileBinding(session.user).catch(() => {});
+          fetchProfile(session.user.id);
+          fetchRoles(session.user.id);
         } else {
           setProfile(null);
           setRoles([]);
@@ -95,12 +149,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     );
 
-    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      
+
       if (session?.user) {
+        ensureProfileBinding(session.user).catch(() => {});
         fetchProfile(session.user.id);
         fetchRoles(session.user.id);
       }
@@ -115,10 +169,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       email,
       password,
       options: {
-        emailRedirectTo: window.location.origin,
-        data: {
-          full_name: fullName,
-        },
+        emailRedirectTo: `${window.location.origin}/auth`,
+        data: { full_name: fullName },
       },
     });
 
@@ -126,14 +178,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       toast.error(error.message);
       throw error;
     }
-    toast.success('Account created successfully!');
+    toast.success('Check your email to confirm your account.');
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
       toast.error(error.message);
@@ -146,14 +195,79 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin,
+        redirectTo: `${window.location.origin}/auth/callback`,
+        queryParams: { access_type: 'offline', prompt: 'consent' },
       },
+    });
+
+    if (error) {
+      const msg = error.message.toLowerCase();
+      if (msg.includes('not enabled') || msg.includes('unsupported provider')) {
+        toast.error('Google sign-in is not enabled. Enable it in Supabase Dashboard → Auth → Providers.');
+      } else {
+        toast.error(error.message);
+      }
+      throw error;
+    }
+  };
+
+  const signInWithMagicLink = async (email: string) => {
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: `${window.location.origin}/auth` },
     });
 
     if (error) {
       toast.error(error.message);
       throw error;
     }
+    toast.success('Check your email for the sign-in link.');
+  };
+
+  const sendPhoneOtp = async (phone: string) => {
+    const normalized = normalizePhone(phone);
+    const { error } = await supabase.auth.signInWithOtp({
+      phone: normalized,
+      options: { channel: 'sms' },
+    });
+
+    if (error) {
+      const msg = error.message.toLowerCase();
+      if (msg.includes('phone provider') || msg.includes('unsupported')) {
+        toast.error('Mobile sign-in is not set up. Enable Phone provider and add an SMS provider in Supabase Dashboard → Auth → Providers.');
+      } else {
+        toast.error(error.message);
+      }
+      throw error;
+    }
+    toast.success('OTP sent to your phone.');
+  };
+
+  const verifyPhoneOtp = async (phone: string, token: string) => {
+    const normalized = normalizePhone(phone);
+    const { error } = await supabase.auth.verifyOtp({
+      phone: normalized,
+      token: token.trim(),
+      type: 'sms',
+    });
+
+    if (error) {
+      toast.error(error.message);
+      throw error;
+    }
+    toast.success('Signed in successfully!');
+  };
+
+  const resetPassword = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth?reset=true`,
+    });
+
+    if (error) {
+      toast.error(error.message);
+      throw error;
+    }
+    toast.success('Check your email for the password reset link.');
   };
 
   const signOut = async () => {
@@ -179,9 +293,62 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       toast.error(error.message);
       throw error;
     }
-    
-    setProfile(prev => prev ? { ...prev, ...updates } : null);
+
+    setProfile(prev => (prev ? { ...prev, ...updates } : null));
     toast.success('Profile updated!');
+  };
+
+  /** Bind email to account (e.g. after phone-only signup). Sends verification link. */
+  const updateUserEmail = async (email: string) => {
+    const { data, error } = await supabase.auth.updateUser({
+      email: email.trim(),
+      options: { emailRedirectTo: `${window.location.origin}/account` },
+    });
+    if (error) {
+      if (error.code !== 'over_email_send_rate_limit') {
+        toast.error(error.message);
+      }
+      throw error;
+    }
+    setUser(data.user);
+    toast.success('Check your email to verify and complete binding.');
+  };
+
+  /** Request phone binding (sends OTP). Call verifyPhoneChange with the OTP to complete. */
+  const updateUserPhone = async (phone: string) => {
+    const normalized = normalizePhone(phone);
+    const { error } = await supabase.auth.updateUser({
+      phone: normalized,
+      options: { channel: 'sms' },
+    });
+    if (error) {
+      const msg = error.message.toLowerCase();
+      if (msg.includes('phone provider') || msg.includes('unsupported')) {
+        toast.error('SMS is not configured. Enable Phone provider in Supabase.');
+      } else {
+        toast.error(error.message);
+      }
+      throw error;
+    }
+    toast.success('OTP sent to your phone.');
+  };
+
+  /** Complete phone binding after updateUserPhone. */
+  const verifyPhoneChange = async (phone: string, token: string) => {
+    const normalized = normalizePhone(phone);
+    const { data, error } = await supabase.auth.verifyOtp({
+      phone: normalized,
+      token: token.trim(),
+      type: 'phone_change',
+    });
+    if (error) {
+      toast.error(error.message);
+      throw error;
+    }
+    setUser(data.user);
+    await ensureProfileBinding(data.user);
+    await fetchProfile(data.user.id);
+    toast.success('Phone linked successfully.');
   };
 
   return (
@@ -196,8 +363,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         signUp,
         signIn,
         signInWithGoogle,
+        signInWithMagicLink,
+        sendPhoneOtp,
+        verifyPhoneOtp,
+        resetPassword,
         signOut,
         updateProfile,
+        refreshProfile,
+        updateUserEmail,
+        updateUserPhone,
+        verifyPhoneChange,
       }}
     >
       {children}

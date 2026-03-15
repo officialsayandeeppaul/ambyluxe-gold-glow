@@ -39,7 +39,7 @@ const Collections = () => {
   return (
     <Layout>
       {/* Cinematic Full-Bleed Hero */}
-      <section ref={heroRef} className="relative h-[85vh] min-h-[600px] overflow-hidden">
+      <section ref={heroRef} className="relative min-h-screen h-screen overflow-hidden">
         <motion.div className="absolute inset-0" style={{ y: heroY }}>
           <img
             src={heroCollection}
@@ -48,16 +48,17 @@ const Collections = () => {
           />
         </motion.div>
 
-        {/* Dark cinematic overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/20 to-background" />
+        {/* Dark cinematic overlay - stronger top for navbar/logo visibility on large screens */}
+        <div className="absolute inset-0 bg-gradient-to-b from-background/80 from-0 via-background/30 via-[15%] to-background to-[70%]" />
         <div className="absolute inset-0 bg-gradient-to-r from-background/60 via-transparent to-background/60" />
+        <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-background to-transparent pointer-events-none" />
 
         {/* Decorative gold lines */}
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
 
         <motion.div
           style={{ opacity: heroOpacity }}
-          className="absolute inset-0 flex items-center justify-center"
+          className="absolute inset-0 flex items-center justify-center pt-20"
         >
           <div className="text-center px-6 max-w-4xl">
             <motion.div
