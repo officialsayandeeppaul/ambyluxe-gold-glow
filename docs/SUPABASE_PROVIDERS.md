@@ -177,3 +177,15 @@ If after Google sign-in you land on `https://www.sayandeep.store/?error=invalid_
 - **Redirect URL mismatch** – Ensure **Site URL** is exactly `https://www.sayandeep.store` and **Redirect URLs** include `https://www.sayandeep.store/**`. In Google Cloud Console, **Authorized redirect URIs** must contain only `https://wgtjsotmotpopmynkxis.supabase.co/auth/v1/callback` (no localhost in production flow).
 
 **In the app:** When this error appears in the URL, the app shows a short message (“Sign-in expired or invalid. Please try again.”), clears the error from the URL, and sends the user to `/auth` to retry.
+
+---
+
+## 5. Production: 404 on `/auth/callback` (Vercel NOT_FOUND)
+
+If after Google sign-in you land on `https://sayandeep.store/auth/callback#access_token=...` and see **404 NOT_FOUND** from Vercel, the host is not serving your app for that path.
+
+**Cause:** The app is a single-page application (SPA). Only `index.html` exists on the server; routes like `/auth/callback` are handled by React Router in the browser. Without a fallback, Vercel looks for a file at `/auth/callback`, finds none, and returns 404.
+
+**Fix:** The repo includes a `vercel.json` that rewrites all non-file requests to `/index.html`, so the SPA loads and React Router can show the callback page. Deploy (or redeploy) so this config is applied.
+
+**www vs non-www:** If you use `https://www.sayandeep.store` in Supabase but the redirect goes to `https://sayandeep.store` (no www), cookie/redirect behavior can differ. Prefer one canonical domain: set **Site URL** and **Redirect URLs** to that domain, and in Vercel (or DNS) add a redirect from the other (e.g. `sayandeep.store` → `www.sayandeep.store`) so all traffic uses the same host.
