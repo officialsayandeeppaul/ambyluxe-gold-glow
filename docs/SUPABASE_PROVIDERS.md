@@ -147,13 +147,33 @@ After step 1 (and optionally 2), your app will send OTP to every number; no code
 
 ---
 
-## 3. Redirect URLs
+## 3. Redirect URLs (fix “Google login redirects to localhost” in production)
 
-Under **Authentication** → **URL Configuration**:
+Under **Authentication** → **URL Configuration** in Supabase:
 
-- **Site URL**: `https://www.sayandeep.store` (or `http://localhost:8080` for local)
-- **Redirect URLs**: add both
-  - `http://localhost:8080/**`
-  - `https://www.sayandeep.store/**`
+1. **Site URL**  
+   Set this to your **production** URL when users use the live site:
+   - **Production:** `https://www.sayandeep.store`  
+   If this is left as `http://localhost:8080` or `http://localhost:3000`, Google login will redirect to localhost after sign-in. Change it to `https://www.sayandeep.store` and **Save**.
 
-Save. Then Google and email redirects will work for both local and production.
+2. **Redirect URLs**  
+   Add **both** (so local and production work):
+   - `http://localhost:8080/**`
+   - `https://www.sayandeep.store/**`
+
+Save. Then Google (and email) redirects will go to the correct origin. The app sends `redirectTo: window.location.origin + '/auth/callback'`, so from www.sayandeep.store it will request a redirect to production; Supabase will only allow it if **Site URL** / **Redirect URLs** are set as above.
+
+---
+
+## 4. Production Google login: “OAuth state not found or expired”
+
+If after Google sign-in you land on `https://www.sayandeep.store/?error=invalid_request&error_code=bad_oauth_state&error_description=OAuth+state+not+found+or+expired`, the OAuth state Supabase stored was missing or expired when the callback ran.
+
+**Common causes:**
+
+- **Third‑party / strict cookie blocking** – The browser blocks the cookie Supabase uses for state when redirecting to Google. Ask users to allow cookies for `sayandeep.store` and `supabase.co`, or try a less strict setting.
+- **Different tab** – User opened “Continue with Google” in a new tab; the state cookie lives in the original tab. Prefer starting login in the same tab.
+- **Long delay on Google’s page** – User stayed on the Google consent screen for a long time; state can expire. Try again and complete the flow quickly.
+- **Redirect URL mismatch** – Ensure **Site URL** is exactly `https://www.sayandeep.store` and **Redirect URLs** include `https://www.sayandeep.store/**`. In Google Cloud Console, **Authorized redirect URIs** must contain only `https://wgtjsotmotpopmynkxis.supabase.co/auth/v1/callback` (no localhost in production flow).
+
+**In the app:** When this error appears in the URL, the app shows a short message (“Sign-in expired or invalid. Please try again.”), clears the error from the URL, and sends the user to `/auth` to retry.
