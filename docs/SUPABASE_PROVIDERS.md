@@ -189,3 +189,21 @@ If after Google sign-in you land on `https://sayandeep.store/auth/callback#acces
 **Fix:** The repo includes a `vercel.json` that rewrites all non-file requests to `/index.html`, so the SPA loads and React Router can show the callback page. Deploy (or redeploy) so this config is applied.
 
 **www vs non-www:** If you use `https://www.sayandeep.store` in Supabase but the redirect goes to `https://sayandeep.store` (no www), cookie/redirect behavior can differ. Prefer one canonical domain: set **Site URL** and **Redirect URLs** to that domain, and in Vercel (or DNS) add a redirect from the other (e.g. `sayandeep.store` → `www.sayandeep.store`) so all traffic uses the same host.
+
+---
+
+## 6. “Phone already registered” – where to check in Supabase
+
+When you get `phone_exists` / “A user with this phone number has already been registered”, the number is stored in **Supabase Auth**, not in `public.profiles`.
+
+**Where to check:**
+
+1. **Supabase Dashboard** → **Authentication** → **Users**
+2. In the users table, look at the **Phone** column. The number is on whichever user row shows that phone (e.g. another account that signed up with phone, or an old test user).
+3. Your **current** user might have `phone: ""` in the session; the “already registered” message means a **different** user row in Auth has that number.
+
+**What to do:**
+
+- If it’s an old/test account you don’t need: in **Authentication** → **Users**, find the user with that phone and delete them (or remove their phone if your project allows it). Then you can link the number to your current account.
+- If it’s another real account: use a different number for this account, or sign in with that phone (phone OTP) to use the other account.
+- The app shows: “This number is already used by another account. Use a different number or sign in with that phone.”

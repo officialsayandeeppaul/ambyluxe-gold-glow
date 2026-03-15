@@ -359,8 +359,7 @@ const Account = () => {
                           <div className="rounded-sm border border-border/50 bg-muted/30 overflow-hidden">
                             <div className="flex items-center gap-2 pl-4 pr-4 py-3">
                               <Phone className="w-4 h-4 text-muted-foreground shrink-0" />
-                              <span className="text-sm text-muted-foreground">+91</span>
-                              <span className="font-medium">{phoneToBind.replace(/\D/g, '').length >= 10 ? formatPhoneDisplay(phoneToBind) : phoneToBind || '—'}</span>
+                              <span className="font-medium">{phoneToBind.replace(/\D/g, '').length >= 10 ? formatPhoneDisplay(phoneToBind) : (phoneToBind ? formatPhoneDisplay(phoneToBind) : '—')}</span>
                               <button type="button" onClick={() => { setPhoneBindStep('input'); setOtpForPhone(''); }} className="ml-auto text-xs text-primary hover:text-primary/80">Use different number</button>
                             </div>
                           </div>
