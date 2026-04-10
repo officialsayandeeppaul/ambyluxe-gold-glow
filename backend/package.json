@@ -13,7 +13,7 @@
     "medusa"
   ],
   "scripts": {
-    "postinstall": "patch-package",
+    "postinstall": "patch-package --exclude '^@medusajs/dashboard$'",
     "build": "medusa build",
     "db:migrate": "medusa db:migrate",
     "db:reset": "node ./scripts/reset-dev-db.cjs",
