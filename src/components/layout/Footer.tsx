@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Instagram, Facebook, Twitter, Mail, Phone, MapPin, ArrowUpRight } from 'lucide-react';
+import { subscribeNewsletter } from '@/lib/medusa/newsletter';
 
 const footerLinks = {
   shop: [
@@ -10,13 +12,13 @@ const footerLinks = {
     { name: 'Earrings', href: '/shop?category=earrings' },
     { name: 'Bracelets', href: '/shop?category=bracelets' },
     { name: 'Bangles', href: '/shop?category=bangles' },
+    { name: 'Pendants', href: '/shop?category=pendants' },
   ],
   company: [
     { name: 'Our Story', href: '/about' },
     { name: 'Craftsmanship', href: '/about#craftsmanship' },
     { name: 'Sustainability', href: '/about#sustainability' },
     { name: 'Press', href: '/press' },
-    { name: 'Careers', href: '/careers' },
   ],
   support: [
     { name: 'Contact Us', href: '/contact' },
@@ -34,6 +36,34 @@ const socialLinks = [
 ];
 
 export const Footer = () => {
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterBusy, setNewsletterBusy] = useState(false);
+  const [newsletterMsg, setNewsletterMsg] = useState<{ text: string; type: 'ok' | 'err' } | null>(null);
+
+  const onSubscribe = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newsletterBusy) return;
+    const email = newsletterEmail.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setNewsletterMsg({ text: 'Please enter a valid email address.', type: 'err' });
+      return;
+    }
+    setNewsletterBusy(true);
+    setNewsletterMsg(null);
+    try {
+      await subscribeNewsletter(email);
+      setNewsletterMsg({ text: 'Subscribed successfully. Welcome to the Inner Circle.', type: 'ok' });
+      setNewsletterEmail('');
+    } catch (error) {
+      setNewsletterMsg({
+        text: error instanceof Error ? error.message : 'Could not subscribe. Please try again.',
+        type: 'err',
+      });
+    } finally {
+      setNewsletterBusy(false);
+    }
+  };
+
   return (
     <footer className="bg-background-elevated border-t border-border/20">
       {/* Newsletter Section */}
@@ -59,19 +89,32 @@ export const Footer = () => {
               </p>
             </div>
             <div>
-              <form className="flex flex-col sm:flex-row gap-3">
+              <form className="flex flex-col gap-2" onSubmit={onSubscribe}>
+                <div className="flex flex-col sm:flex-row gap-3">
                 <input
                   type="email"
                   placeholder="Your email address"
+                  value={newsletterEmail}
+                  onChange={(e) => {
+                    setNewsletterEmail(e.target.value);
+                    if (newsletterMsg) setNewsletterMsg(null);
+                  }}
                   className="flex-1 bg-background border border-border/50 rounded-sm px-5 py-4 text-sm font-light placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors"
                 />
                 <button
                   type="submit"
+                  disabled={newsletterBusy}
                   className="bg-primary text-primary-foreground px-8 py-4 text-xs uppercase tracking-[0.2em] font-medium hover:bg-primary/90 transition-colors rounded-sm flex items-center gap-2"
                 >
-                  Subscribe
+                  {newsletterBusy ? 'Subscribing…' : 'Subscribe'}
                   <ArrowUpRight className="w-3 h-3" />
                 </button>
+                </div>
+                {newsletterMsg && (
+                  <p className={`text-xs ${newsletterMsg.type === 'ok' ? 'text-primary' : 'text-destructive'}`}>
+                    {newsletterMsg.text}
+                  </p>
+                )}
               </form>
             </div>
           </motion.div>

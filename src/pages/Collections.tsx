@@ -1,33 +1,26 @@
 import { motion, useScroll, useTransform } from 'framer-motion';
-import { useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, Navigate, useParams } from 'react-router-dom';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
-import { collections } from '@/lib/products';
 import heroCollection from '@/assets/hero-collection.jpg';
-
-const collectionsMeta = [
-  {
-    ...collections[0],
-    tagline: 'Enduring Elegance',
-    longDescription: 'Masterpieces that defy the passage of time. Each piece in our Timeless collection is designed to become an heirloom — a bridge between generations, carrying stories of love and legacy.',
-    itemCount: 24,
-  },
-  {
-    ...collections[1],
-    tagline: 'Royal Legacy',
-    longDescription: 'Born from centuries of Indian royal craftsmanship, the Heritage collection honours tradition while embracing contemporary sophistication. Every piece tells the story of emperors and artisans.',
-    itemCount: 18,
-  },
-  {
-    ...collections[2],
-    tagline: 'Cosmic Radiance',
-    longDescription: 'Inspired by the infinite beauty of the cosmos — the shimmer of distant stars, the glow of the moon, the aurora of twilight. The Celestial collection captures the ethereal in precious form.',
-    itemCount: 16,
-  },
-];
+import { useShowcaseCollections } from '@/hooks/useCollections';
+import {
+  SHOWCASE_FALLBACK_PUBLIC,
+  type ShowcaseCollection,
+} from '@/lib/medusa/collections';
+import { cn } from '@/lib/utils';
 
 const Collections = () => {
+  const { handle: collectionHandleParam } = useParams<{ handle?: string }>();
+  const handleTrim = collectionHandleParam?.trim();
+  if (handleTrim) {
+    return (
+      <Navigate to={`/shop?collection=${encodeURIComponent(handleTrim)}`} replace />
+    );
+  }
+
+  const { data: showcaseCollections = [], isLoading } = useShowcaseCollections('all');
   const heroRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress: heroScroll } = useScroll({
     target: heroRef,
@@ -35,6 +28,8 @@ const Collections = () => {
   });
   const heroY = useTransform(heroScroll, [0, 1], [0, 150]);
   const heroOpacity = useTransform(heroScroll, [0, 0.7], [1, 0]);
+
+  const countLabel = showcaseCollections.length || 3;
 
   return (
     <Layout>
@@ -90,7 +85,8 @@ const Collections = () => {
               transition={{ duration: 0.8, delay: 0.8 }}
               className="text-foreground/60 text-lg md:text-xl font-light max-w-xl mx-auto leading-relaxed tracking-wide"
             >
-              Three distinct expressions of luxury, each with its own philosophy and aesthetic language.
+              {countLabel} expressions of luxury from our catalogue — synced from Medusa when your
+              store is connected.
             </motion.p>
           </div>
         </motion.div>
@@ -112,9 +108,14 @@ const Collections = () => {
       </section>
 
       {/* Collection Showcases — Full-width immersive sections */}
-      {collectionsMeta.map((collection, index) => (
-        <CollectionShowcase key={collection.id} collection={collection} index={index} />
-      ))}
+      {isLoading &&
+        Array.from({ length: 3 }).map((_, i) => (
+          <div key={`sk-${i}`} className="grid grid-cols-1 lg:grid-cols-2 min-h-[50vh] animate-pulse bg-muted/20" />
+        ))}
+      {!isLoading &&
+        showcaseCollections.map((collection, index) => (
+          <CollectionShowcase key={collection.medusaId} collection={collection} index={index} />
+        ))}
 
       {/* Bottom CTA */}
       <section className="py-32 relative overflow-hidden">
@@ -149,9 +150,15 @@ const Collections = () => {
 };
 
 interface CollectionShowcaseProps {
-  collection: typeof collectionsMeta[0];
+  collection: ShowcaseCollection;
   index: number;
 }
+
+const FALLBACK_IMAGES = [
+  SHOWCASE_FALLBACK_PUBLIC,
+  '/images/products/product-bangles.jpg',
+  '/images/products/product-pendant.jpg',
+] as const;
 
 const CollectionShowcase = ({ collection, index }: CollectionShowcaseProps) => {
   const ref = useRef<HTMLDivElement>(null);
@@ -162,70 +169,159 @@ const CollectionShowcase = ({ collection, index }: CollectionShowcaseProps) => {
   const imgY = useTransform(scrollYProgress, [0, 1], [80, -80]);
   const isEven = index % 2 === 0;
 
+  const imageCandidates = useMemo(() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const u of [collection.image, ...FALLBACK_IMAGES]) {
+      if (u && !seen.has(u)) {
+        seen.add(u);
+        out.push(u);
+      }
+    }
+    return out;
+  }, [collection.image, collection.medusaId]);
+
+  const [candidateIdx, setCandidateIdx] = useState(0);
+  const imgSrc = imageCandidates[Math.min(candidateIdx, imageCandidates.length - 1)];
+
+  useEffect(() => {
+    setCandidateIdx(0);
+  }, [collection.image, collection.medusaId]);
+
+  const copySafe = 'min-w-0 max-w-full [overflow-wrap:anywhere] break-words';
+
   return (
-    <section ref={ref} className="relative py-0">
-      <div className="grid grid-cols-1 lg:grid-cols-2 min-h-[80vh]">
-        {/* Image Side */}
+    <section ref={ref} className="relative py-0 overflow-x-hidden">
+      <div className="grid grid-cols-1 lg:grid-cols-2 min-h-[80vh] min-w-0 w-full max-w-full">
+        {/* Image Side — group scoped here only so hovering copy does not zoom/crop the photo */}
         <motion.div
-          className={`relative overflow-hidden ${isEven ? 'lg:order-1' : 'lg:order-2'}`}
+          className={cn(
+            'group/showcase relative overflow-hidden min-h-[50vh] lg:min-h-[85vh] min-w-0 max-w-full',
+            isEven ? 'lg:order-1' : 'lg:order-2',
+          )}
         >
-          <motion.img
-            src={collection.image}
-            alt={collection.name}
-            className="w-full h-full object-cover min-h-[50vh] lg:min-h-full"
+          <motion.div
+            className="absolute inset-0 w-full h-[128%] -top-[14%] left-0"
             style={{ y: imgY }}
+          >
+            <img
+              src={imgSrc}
+              alt={collection.name}
+              onError={() => {
+                setCandidateIdx((i) =>
+                  i < imageCandidates.length - 1 ? i + 1 : i,
+                );
+              }}
+              className="h-full w-full object-cover transition-transform duration-1000 ease-out motion-reduce:transform-none group-hover/showcase:scale-[1.04] group-focus-within/showcase:scale-[1.04]"
+            />
+          </motion.div>
+
+          <div
+            className={cn(
+              'absolute inset-0 from-transparent via-transparent to-background/85 pointer-events-none hidden lg:block',
+              isEven ? 'bg-gradient-to-r' : 'bg-gradient-to-l',
+            )}
           />
-          <div className={`absolute inset-0 bg-gradient-to-${isEven ? 'r' : 'l'} from-transparent via-transparent to-background/80 hidden lg:block`} />
-          <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-background/20 lg:hidden" />
-          
-          {/* Collection number */}
-          <div className={`absolute top-8 ${isEven ? 'left-8' : 'right-8'}`}>
+          <div className="absolute inset-0 bg-gradient-to-t from-background/70 via-background/10 to-background/25 lg:hidden pointer-events-none" />
+          <div
+            className="absolute inset-0 opacity-40 group-hover/showcase:opacity-100 transition-opacity duration-700 pointer-events-none"
+            style={{
+              background:
+                'radial-gradient(ellipse at 50% 40%, hsl(42 78% 52% / 0.12), transparent 65%)',
+            }}
+          />
+          <div className="absolute inset-4 sm:inset-6 border border-primary/0 group-hover/showcase:border-primary/20 transition-colors duration-700 rounded-sm pointer-events-none" />
+
+          <div className={cn('absolute top-8', isEven ? 'left-8' : 'right-8')}>
             <span className="font-editorial text-8xl md:text-9xl font-light italic text-foreground/10">
               {String(index + 1).padStart(2, '0')}
             </span>
           </div>
         </motion.div>
 
-        {/* Content Side */}
-        <div className={`flex items-center ${isEven ? 'lg:order-2 lg:pl-16 xl:pl-24' : 'lg:order-1 lg:pr-16 xl:pr-24 lg:text-right'} px-8 py-16 lg:py-0`}>
+        {/* Content Side — overflow visible so link/title motion is never clipped */}
+        <div
+          className={cn(
+            'flex items-center min-w-0 max-w-full px-8 py-16 lg:py-0 overflow-visible',
+            isEven ? 'lg:order-2 lg:pl-16 xl:pl-24' : 'lg:order-1 lg:pr-16 xl:pr-24 lg:text-right',
+          )}
+        >
           <motion.div
             initial={{ opacity: 0, x: isEven ? 40 : -40 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, margin: '-100px' }}
             transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-            className="max-w-lg"
+            className={cn(
+              'w-full max-w-lg min-w-0 space-y-6',
+              copySafe,
+              !isEven && 'lg:ml-auto',
+            )}
           >
-            <span className="text-[10px] uppercase tracking-[0.5em] text-primary/80 mb-6 block font-medium">
-              {collection.tagline}
-            </span>
+            <header className={cn('space-y-4', copySafe)}>
+              <span
+                className={cn(
+                  'text-[10px] uppercase tracking-[0.5em] text-primary/80 block font-medium',
+                  copySafe,
+                )}
+              >
+                {collection.tagline}
+              </span>
 
-            <h2 className="font-editorial text-6xl md:text-7xl lg:text-8xl font-light italic text-foreground mb-8 leading-[0.9]">
-              {collection.name}
-            </h2>
+              <h2
+                className={cn(
+                  'font-editorial text-6xl md:text-7xl lg:text-8xl font-light italic text-foreground',
+                  'leading-[1.08] pb-1 text-balance',
+                  copySafe,
+                )}
+              >
+                {collection.name}
+              </h2>
 
-            <div className={`w-20 h-px bg-primary/40 mb-8 ${!isEven ? 'lg:ml-auto' : ''}`} />
+              <div
+                className={cn(
+                  'w-20 max-w-full h-px shrink-0 bg-primary/40',
+                  !isEven ? 'lg:ml-auto' : '',
+                )}
+              />
+            </header>
 
-            <p className="text-muted-foreground font-light text-base leading-[1.9] mb-10">
+            <p
+              className={cn(
+                'text-muted-foreground font-light text-base leading-relaxed sm:leading-[1.85] max-w-prose',
+                'text-pretty',
+                copySafe,
+                !isEven && 'lg:ml-auto lg:text-right',
+              )}
+            >
               {collection.longDescription}
             </p>
 
-            <div className={`flex items-center gap-6 ${!isEven ? 'lg:justify-end' : ''}`}>
-              <span className="text-[10px] text-muted-foreground/60 tracking-[0.3em] uppercase">
-                {collection.itemCount} Pieces
+            <div
+              className={cn(
+                'flex flex-wrap items-center gap-x-6 gap-y-3 pt-2',
+                !isEven ? 'lg:justify-end' : '',
+              )}
+            >
+              <span
+                className={cn(
+                  'text-[10px] text-muted-foreground/60 tracking-[0.3em] uppercase shrink-0',
+                  copySafe,
+                )}
+              >
+                {collection.itemCount} {collection.itemCount === 1 ? 'Piece' : 'Pieces'}
               </span>
               <Link
-                to={`/shop?collection=${collection.id}`}
-                className="group/btn inline-flex items-center gap-3 text-sm text-primary font-medium tracking-[0.15em] uppercase hover:gap-5 transition-all duration-500"
+                to={`/shop?collection=${encodeURIComponent(collection.handle)}`}
+                className="group/btn inline-flex items-center gap-3 text-sm text-primary font-medium tracking-[0.15em] uppercase transition-all duration-500 hover:gap-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-sm"
               >
                 Explore
-                <ArrowRight className="w-4 h-4 transition-transform group-hover/btn:translate-x-1" />
+                <ArrowRight className="w-4 h-4 shrink-0 transition-transform group-hover/btn:translate-x-1 motion-reduce:transform-none" />
               </Link>
             </div>
           </motion.div>
         </div>
       </div>
 
-      {/* Separator line */}
       <div className="h-px bg-gradient-to-r from-transparent via-primary/15 to-transparent" />
     </section>
   );

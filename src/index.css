@@ -145,6 +145,9 @@
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    /* Multi-line gradient: each line gets its own decoration box (helps tight layouts) */
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
     animation: shimmer-text 4s linear infinite;
   }
 

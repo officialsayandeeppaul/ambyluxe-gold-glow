@@ -2,10 +2,10 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { ArrowUpRight } from 'lucide-react';
 import { ProductCard } from '@/components/shop/ProductCard';
-import { products } from '@/lib/products';
+import { useFeaturedProducts } from '@/hooks/useProducts';
 
 export const FeaturedProducts = () => {
-  const featuredProducts = products.filter((p) => p.isBestseller).slice(0, 4);
+  const { data: featuredProducts = [], isLoading } = useFeaturedProducts(5);
 
   return (
     <section className="section-padding bg-background relative overflow-hidden">
@@ -56,8 +56,13 @@ export const FeaturedProducts = () => {
         </div>
 
         {/* Products Grid - Masonry-like */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
-          {featuredProducts.map((product, index) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 md:gap-8">
+          {isLoading &&
+            Array.from({ length: 5 }).map((_, i) => (
+              <div key={`fsk-${i}`} className="aspect-[3/4] rounded-sm bg-muted/40 animate-pulse" />
+            ))}
+          {!isLoading &&
+            featuredProducts.map((product, index) => (
             <motion.div
               key={product.id}
               initial={{ opacity: 0, y: 50 }}

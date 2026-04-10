@@ -1,0 +1,32 @@
+# PostgreSQL + Redis for Medusa (backend/). From repo root: docker compose up -d
+services:
+  postgres:
+    image: postgres:16-alpine
+    # Host 5433 avoids clashing with a local PostgreSQL install on 5432
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: medusa
+    volumes:
+      - medusa_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d medusa"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  medusa_pgdata:

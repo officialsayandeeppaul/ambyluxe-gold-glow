@@ -70,9 +70,16 @@ const About = () => {
               viewport={{ once: true }}
               transition={{ duration: 0.8 }}
             >
-              <div className="aspect-[4/5] rounded-lg overflow-hidden border-gold-glow bg-muted">
-                <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                  Founder Image
+              <div className="aspect-[4/5] rounded-lg overflow-hidden border-gold-glow bg-muted relative group">
+                <img
+                  src="/founder-profile.jpeg"
+                  alt="Founder of Amby Luxe Jewels"
+                  className="w-full h-full object-cover object-center group-hover:scale-[1.02] transition-transform duration-700"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent" />
+                <div className="absolute bottom-4 left-4 right-4">
+                  <p className="text-xs uppercase tracking-[0.25em] text-primary/90 mb-1">Founder</p>
+                  <p className="text-sm text-foreground/90 font-medium">Ankita Mishra</p>
                 </div>
               </div>
             </motion.div>

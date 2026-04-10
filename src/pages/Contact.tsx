@@ -1,12 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Mail, Phone, MapPin, Clock, Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { submitContactMessage } from '@/lib/medusa/contactMessages';
+import { useAuth } from '@/hooks/useAuth';
 
 const Contact = () => {
+  const { user, customer, profile, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
+  const [submitting, setSubmitting] = useState(false);
+  const [messageError, setMessageError] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -15,17 +20,83 @@ const Contact = () => {
     message: '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const authPrefill = useMemo(() => {
+    const fullName =
+      profile?.full_name?.trim() ||
+      [customer?.first_name, customer?.last_name].filter(Boolean).join(' ').trim() ||
+      '';
+    const email = customer?.email?.trim() || user?.email?.trim() || '';
+    const phone = customer?.phone?.trim() || profile?.phone?.trim() || '';
+    return { fullName, email, phone };
+  }, [profile?.full_name, profile?.phone, customer?.first_name, customer?.last_name, customer?.email, customer?.phone, user?.email]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (user) {
+      setFormData((prev) => ({
+        ...prev,
+        name: authPrefill.fullName,
+        email: authPrefill.email,
+        phone: authPrefill.phone,
+      }));
+      return;
+    }
+    setFormData((prev) => ({
+      ...prev,
+      name: '',
+      email: '',
+      phone: '',
+    }));
+  }, [authLoading, user, authPrefill]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "Message Sent!",
-      description: "Thank you for reaching out. We'll get back to you within 24 hours.",
-    });
-    setFormData({ name: '', email: '', phone: '', subject: '', message: '' });
+    if (submitting) return;
+    const msgLen = formData.message.trim().length;
+    if (msgLen < 12) {
+      setMessageError('Please enter at least 12 characters.');
+      return;
+    }
+    setMessageError('');
+    setSubmitting(true);
+    try {
+      await submitContactMessage({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone || undefined,
+        subject: formData.subject,
+        message: formData.message,
+      });
+      toast({
+        title: "Message sent",
+        description: "Thank you. Our team will get back to you shortly.",
+      });
+      setFormData({ name: '', email: '', phone: '', subject: '', message: '' });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Please try again in a moment.';
+      // Validation errors are shown under the field (no popup).
+      if (msg.toLowerCase().includes('message') || msg.toLowerCase().includes('short')) {
+        setMessageError(msg);
+      } else {
+        toast({
+          title: "Could not send message",
+          description: msg,
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    if (e.target.name === 'message') {
+      const next = e.target.value.trim();
+      if (next.length === 0) setMessageError('');
+      else if (next.length < 12) setMessageError('Please enter at least 12 characters.');
+      else setMessageError('');
+    }
   };
 
   return (
@@ -145,6 +216,11 @@ const Contact = () => {
                 </h2>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
+                  {user && (
+                    <p className="text-xs text-muted-foreground">
+                      Contact details auto-filled from your account. You can still edit before sending.
+                    </p>
+                  )}
                   <div className="grid md:grid-cols-2 gap-6">
                     <div>
                       <label htmlFor="name" className="block text-sm font-medium mb-2">
@@ -229,11 +305,16 @@ const Contact = () => {
                       className="w-full bg-muted border border-border/50 rounded px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors resize-none"
                       placeholder="Tell us how we can help..."
                     />
+                    {messageError ? (
+                      <p className="mt-2 text-xs text-destructive">{messageError}</p>
+                    ) : (
+                      <p className="mt-2 text-[11px] text-muted-foreground">Minimum 12 characters.</p>
+                    )}
                   </div>
 
-                  <Button variant="hero" size="xl" type="submit" className="w-full md:w-auto">
+                  <Button variant="hero" size="xl" type="submit" className="w-full md:w-auto" disabled={submitting}>
                     <Send className="w-4 h-4 mr-2" />
-                    Send Message
+                    {submitting ? 'Sending...' : 'Send Message'}
                   </Button>
                 </form>
               </div>

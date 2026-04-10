@@ -1,0 +1,26 @@
+diff --git a/node_modules/react-currency-input-field/dist/index.esm.js b/node_modules/react-currency-input-field/dist/index.esm.js
+index c05f8de..9b8da70 100644
+--- a/node_modules/react-currency-input-field/dist/index.esm.js
++++ b/node_modules/react-currency-input-field/dist/index.esm.js
+@@ -193,7 +193,7 @@ var formatValue = function (options) {
+         value = '0' + value;
+     }
+     var _c = intlConfig || {}, locale = _c.locale, currency = _c.currency, formatOptions = __rest(_c, ["locale", "currency"]);
+-    var defaultNumberFormatOptions = __assign(__assign({}, formatOptions), { minimumFractionDigits: decimalScale || 0, maximumFractionDigits: 20 });
++    var defaultNumberFormatOptions = __assign(__assign({}, formatOptions), { minimumFractionDigits: 0, maximumFractionDigits: decimalScale !== void 0 ? decimalScale : 20 });
+     var numberFormatter = intlConfig
+         ? new Intl.NumberFormat(locale, __assign(__assign({}, defaultNumberFormatOptions), (currency && { style: 'currency', currency: currency })))
+         : new Intl.NumberFormat(undefined, defaultNumberFormatOptions);
+diff --git a/node_modules/react-currency-input-field/dist/index.js b/node_modules/react-currency-input-field/dist/index.js
+index a9b6798..9cd812e 100644
+--- a/node_modules/react-currency-input-field/dist/index.js
++++ b/node_modules/react-currency-input-field/dist/index.js
+@@ -201,7 +201,7 @@
+           value = '0' + value;
+       }
+       var _c = intlConfig || {}, locale = _c.locale, currency = _c.currency, formatOptions = __rest(_c, ["locale", "currency"]);
+-      var defaultNumberFormatOptions = __assign(__assign({}, formatOptions), { minimumFractionDigits: decimalScale || 0, maximumFractionDigits: 20 });
++      var defaultNumberFormatOptions = __assign(__assign({}, formatOptions), { minimumFractionDigits: 0, maximumFractionDigits: decimalScale !== void 0 ? decimalScale : 20 });
+       var numberFormatter = intlConfig
+           ? new Intl.NumberFormat(locale, __assign(__assign({}, defaultNumberFormatOptions), (currency && { style: 'currency', currency: currency })))
+           : new Intl.NumberFormat(undefined, defaultNumberFormatOptions);

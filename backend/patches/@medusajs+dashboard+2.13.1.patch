@@ -1,0 +1,96 @@
+diff --git a/node_modules/@medusajs/dashboard/dist/chunk-DK4WIVY6.mjs b/node_modules/@medusajs/dashboard/dist/chunk-DK4WIVY6.mjs
+--- a/node_modules/@medusajs/dashboard/dist/chunk-DK4WIVY6.mjs
++++ b/node_modules/@medusajs/dashboard/dist/chunk-DK4WIVY6.mjs
+@@ -291,7 +291,7 @@
+   INR: {
+     code: "INR",
+     name: "Indian Rupee",
+-    symbol_native: "\u20B9",
++    symbol_native: "paisa",
+     decimal_digits: 2
+   },
+diff --git a/node_modules/@medusajs/dashboard/dist/chunk-X6BAAGCL.mjs b/node_modules/@medusajs/dashboard/dist/chunk-X6BAAGCL.mjs
+--- a/node_modules/@medusajs/dashboard/dist/chunk-X6BAAGCL.mjs
++++ b/node_modules/@medusajs/dashboard/dist/chunk-X6BAAGCL.mjs
+@@ -6,36 +6,52 @@
+ var getDecimalDigits = (currency) => {
+   return currencies[currency.toUpperCase()]?.decimal_digits ?? 0;
+ };
+ var getLocaleAmount = (amount, currencyCode) => {
++  const maxFrac = getDecimalDigits(currencyCode);
++  if (currencyCode.toUpperCase() === "INR") {
++    return `${amount.toLocaleString([], {
++      minimumFractionDigits: 0,
++      maximumFractionDigits: maxFrac
++    })} paisa`;
++  }
+   const formatter = new Intl.NumberFormat([], {
+     style: "currency",
+     currencyDisplay: "narrowSymbol",
+-    currency: currencyCode
++    currency: currencyCode,
++    minimumFractionDigits: 0,
++    maximumFractionDigits: maxFrac
+   });
+   return formatter.format(amount);
+ };
+ var getNativeSymbol = (currencyCode) => {
++  if (currencyCode.toUpperCase() === "INR") {
++    return "paisa";
++  }
+   const formatted = new Intl.NumberFormat([], {
+     style: "currency",
+     currency: currencyCode,
+     currencyDisplay: "narrowSymbol"
+   }).format(0);
+   return formatted.replace(/\d/g, "").replace(/[.,]/g, "").trim();
+ };
+ var getStylizedAmount = (amount, currencyCode) => {
+-  const symbol = getNativeSymbol(currencyCode);
+   const decimalDigits = getDecimalDigits(currencyCode);
+   const lessThanRoundingPrecission = isAmountLessThenRoundingError(
+     amount,
+     currencyCode
+   );
+   const total = amount.toLocaleString(void 0, {
+-    minimumFractionDigits: decimalDigits,
++    minimumFractionDigits: 0,
+     maximumFractionDigits: decimalDigits,
+     signDisplay: lessThanRoundingPrecission ? "exceptZero" : "auto"
+   });
++  if (currencyCode.toUpperCase() === "INR") {
++    return `${total} paisa`;
++  }
++  const symbol = getNativeSymbol(currencyCode);
+   return `${symbol} ${total} ${currencyCode.toUpperCase()}`;
+ };
+ var isAmountLessThenRoundingError = (amount, currencyCode) => {
+diff --git a/node_modules/@medusajs/dashboard/dist/chunk-WATKBUHQ.mjs b/node_modules/@medusajs/dashboard/dist/chunk-WATKBUHQ.mjs
+--- a/node_modules/@medusajs/dashboard/dist/chunk-WATKBUHQ.mjs
++++ b/node_modules/@medusajs/dashboard/dist/chunk-WATKBUHQ.mjs
+@@ -1,9 +1,27 @@
++import {
++  currencies
++} from "./chunk-DK4WIVY6.mjs";
++
+ // src/lib/format-currency.ts
+ var formatCurrency = (amount, currency) => {
+-  return new Intl.NumberFormat(void 0, {
++  const code = currency.toUpperCase();
++  const maxFrac = currencies[code]?.decimal_digits ?? 2;
++  if (code === "INR") {
++    return `${amount.toLocaleString(void 0, {
++      minimumFractionDigits: 0,
++      maximumFractionDigits: maxFrac,
++      signDisplay: "auto"
++    })} paisa`;
++  }
++  return new Intl.NumberFormat(void 0, {
+     style: "currency",
+     currency,
+-    signDisplay: "auto"
++    signDisplay: "auto",
++    minimumFractionDigits: 0,
++    maximumFractionDigits: maxFrac
+   }).format(amount);
+ };

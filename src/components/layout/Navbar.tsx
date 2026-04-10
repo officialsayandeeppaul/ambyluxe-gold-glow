@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, ShoppingBag, Heart, User, Search, LogIn } from 'lucide-react';
+import { Menu, X, ShoppingBag, Heart, User, Search, LogIn, Shield, Package, Bell } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { useAuth } from '@/hooks/useAuth';
 import { ProfileAvatar } from '@/components/ProfileAvatar';
+import { SiteSearchDialog } from '@/components/search/SiteSearchDialog';
+import { useStoreNotificationSummary } from '@/hooks/useNotifications';
+import { isMedusaConfigured } from '@/integrations/medusa/client';
+import { NotificationsDrawer } from '@/components/notifications/NotificationsDrawer';
 
 const navLinks = [
   { name: 'Collections', href: '/collections' },
@@ -15,10 +19,18 @@ const navLinks = [
 
 export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const location = useLocation();
-  const cartCount = useStore((state) => state.cartCount());
-  const { user, profile, isLoading } = useAuth();
+  /** Derive from `cart` so Zustand re-subscribes when lines change (`cartCount()` alone may not). */
+  const cartCount = useStore((state) =>
+    state.cart.reduce((n, item) => n + item.quantity, 0),
+  );
+  const { user, profile, isLoading, isAdmin } = useAuth();
+  const notificationsEnabled = Boolean(user) && isMedusaConfigured();
+  const notificationsQuery = useStoreNotificationSummary(notificationsEnabled);
+  const unreadCount = notificationsQuery.data?.unread_count ?? 0;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -96,21 +108,60 @@ export const Navbar = () => {
 
             {/* Right Icons */}
             <div className="flex items-center space-x-5">
-              <button className="hidden md:block text-foreground/60 hover:text-primary transition-colors">
+              <button
+                type="button"
+                onClick={() => setSearchOpen(true)}
+                className="text-foreground/60 hover:text-primary transition-colors p-1 -m-1"
+                aria-label="Search products"
+              >
                 <Search className="h-4 w-4" />
               </button>
+              {!isLoading && isAdmin && (
+                <Link
+                  to="/admin"
+                  className="hidden md:flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground hover:text-primary transition-colors"
+                >
+                  <Shield className="h-3.5 w-3.5" />
+                  Admin
+                </Link>
+              )}
               {!isLoading && (
                 user ? (
-                  <Link
-                    to="/account"
-                    className="hidden md:flex items-center gap-2 text-foreground/60 hover:text-primary transition-colors"
-                  >
-                    <ProfileAvatar
-                      avatarUrl={profile?.avatar_url ?? null}
-                      seed={user?.id ?? user?.email ?? undefined}
-                      className="w-6 h-6"
-                    />
-                  </Link>
+                  <>
+                    <button
+                      type="button"
+                      className="relative text-foreground/60 hover:text-primary transition-colors"
+                      title="Notifications"
+                      onClick={() => {
+                        setNotificationsOpen(true);
+                      }}
+                    >
+                      <Bell className="h-4 w-4" />
+                      {unreadCount > 0 && (
+                        <span className="absolute -top-2 -right-2 h-4 min-w-4 px-1 rounded-full bg-primary text-primary-foreground text-[9px] leading-4 text-center">
+                          {unreadCount > 9 ? '9+' : unreadCount}
+                        </span>
+                      )}
+                    </button>
+                    <Link
+                      to="/account/orders"
+                      className="hidden md:flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground hover:text-primary transition-colors"
+                      title="Orders"
+                    >
+                      <Package className="h-3.5 w-3.5" />
+                      Orders
+                    </Link>
+                    <Link
+                      to="/account"
+                      className="hidden md:flex items-center gap-2 text-foreground/60 hover:text-primary transition-colors"
+                    >
+                      <ProfileAvatar
+                        avatarUrl={profile?.avatar_url ?? null}
+                        seed={user?.id ?? user?.email ?? undefined}
+                        className="w-6 h-6"
+                      />
+                    </Link>
+                  </>
                 ) : (
                   <Link
                     to="/auth"
@@ -207,16 +258,67 @@ export const Navbar = () => {
                   <motion.div
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.35 }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsOpen(false);
+                        setSearchOpen(true);
+                      }}
+                      className="flex items-center gap-3 text-foreground/80 hover:text-primary transition-colors w-full text-left"
+                    >
+                      <Search className="h-5 w-5" />
+                      <span className="text-lg font-display font-light tracking-wide">Search</span>
+                    </button>
+                  </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.4 }}
                     className="space-y-4"
                   >
-                    <Link
-                      to="/account"
-                      className="flex items-center space-x-3 text-foreground/60 hover:text-primary transition-colors"
-                    >
-                      <User className="h-4 w-4" />
-                      <span className="text-sm font-light">My Account</span>
-                    </Link>
+                    {!isLoading && user ? (
+                      <>
+                        <button
+                          type="button"
+                          className="flex items-center space-x-3 text-foreground/60 hover:text-primary transition-colors"
+                          onClick={() => {
+                            setIsOpen(false);
+                            setNotificationsOpen(true);
+                          }}
+                        >
+                          <Bell className="h-4 w-4" />
+                          <span className="text-sm font-light">
+                            Notifications
+                            {unreadCount > 0 ? ` (${unreadCount})` : ''}
+                          </span>
+                        </button>
+                        <Link
+                          to="/account/orders"
+                          className="flex items-center space-x-3 text-foreground/60 hover:text-primary transition-colors"
+                        >
+                          <Package className="h-4 w-4" />
+                          <span className="text-sm font-light">Orders</span>
+                        </Link>
+                        <Link
+                          to="/account"
+                          className="flex items-center space-x-3 text-foreground/60 hover:text-primary transition-colors"
+                        >
+                          <User className="h-4 w-4" />
+                          <span className="text-sm font-light">My Account</span>
+                        </Link>
+                      </>
+                    ) : !isLoading ? (
+                      <Link
+                        to="/auth"
+                        className="flex items-center space-x-3 text-foreground/60 hover:text-primary transition-colors"
+                      >
+                        <LogIn className="h-4 w-4" />
+                        <span className="text-sm font-light">Login</span>
+                      </Link>
+                    ) : null}
                     <Link
                       to="/wishlist"
                       className="flex items-center space-x-3 text-foreground/60 hover:text-primary transition-colors"
@@ -231,6 +333,13 @@ export const Navbar = () => {
           </>
         )}
       </AnimatePresence>
+
+      <SiteSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
+      <NotificationsDrawer
+        open={notificationsOpen}
+        onOpenChange={setNotificationsOpen}
+        enabled={notificationsEnabled}
+      />
     </>
   );
 };
