@@ -32,11 +32,15 @@ function main() {
     run("npm", ["run", "seed"]);
   }
 
-  // Railway can occasionally start without persisted build artifacts.
-  // Rebuild only when admin bundle is missing so /app does not 500.
+  // Ensure admin/build artifacts always exist before boot.
+  // This avoids intermittent "/app" 500 on Railway when artifacts are absent.
+  run("npm", ["run", "build"]);
+
+  // Safety check after build.
   const adminIndex = join(process.cwd(), ".medusa", "server", "public", "admin", "index.html");
   if (!existsSync(adminIndex)) {
-    run("npm", ["run", "build"]);
+    console.error(`[railway-start] missing admin build artifact: ${adminIndex}`);
+    process.exit(1);
   }
 
   const port = process.env.PORT || "9000";
