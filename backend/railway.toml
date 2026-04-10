@@ -1,0 +1,4 @@
+# Prefer Docker so Medusa `.medusa` build output is included in the runtime image.
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
