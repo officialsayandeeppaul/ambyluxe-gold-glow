@@ -1,4 +1,6 @@
 const { spawnSync } = require("node:child_process");
+const { existsSync } = require("node:fs");
+const { join } = require("node:path");
 
 function run(cmd, args) {
   const printable = `${cmd} ${args.join(" ")}`;
@@ -28,6 +30,13 @@ function main() {
   // set MEDUSA_BOOTSTRAP_ON_DEPLOY=true in service variables once.
   if ((process.env.MEDUSA_BOOTSTRAP_ON_DEPLOY || "").toLowerCase() === "true") {
     run("npm", ["run", "seed"]);
+  }
+
+  // Railway can occasionally start without persisted build artifacts.
+  // Rebuild only when admin bundle is missing so /app does not 500.
+  const adminIndex = join(process.cwd(), ".medusa", "server", "public", "admin", "index.html");
+  if (!existsSync(adminIndex)) {
+    run("npm", ["run", "build"]);
   }
 
   const port = process.env.PORT || "9000";
