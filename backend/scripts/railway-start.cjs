@@ -1,6 +1,4 @@
 const { spawnSync } = require("node:child_process");
-const { existsSync } = require("node:fs");
-const { join } = require("node:path");
 
 function run(cmd, args) {
   const printable = `${cmd} ${args.join(" ")}`;
@@ -30,17 +28,6 @@ function main() {
   // set MEDUSA_BOOTSTRAP_ON_DEPLOY=true in service variables once.
   if ((process.env.MEDUSA_BOOTSTRAP_ON_DEPLOY || "").toLowerCase() === "true") {
     run("npm", ["run", "seed"]);
-  }
-
-  // Ensure admin/build artifacts always exist before boot.
-  // This avoids intermittent "/app" 500 on Railway when artifacts are absent.
-  run("npm", ["run", "build"]);
-
-  // Safety check after build.
-  const adminIndex = join(process.cwd(), ".medusa", "server", "public", "admin", "index.html");
-  if (!existsSync(adminIndex)) {
-    console.error(`[railway-start] missing admin build artifact: ${adminIndex}`);
-    process.exit(1);
   }
 
   const port = process.env.PORT || "9000";
