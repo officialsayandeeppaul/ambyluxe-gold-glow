@@ -14,8 +14,15 @@ function run(cmd, args) {
 }
 
 function main() {
-  // Always keep schema and promo setup synchronized on deploy.
-  run("npm", ["run", "deploy:prepare"]);
+  // Safe default for all deploys: only migrate schema.
+  run("npm", ["run", "db:migrate"]);
+
+  // Optional setup pass (collections/promotions/INR) for controlled maintenance deploys.
+  if ((process.env.MEDUSA_SETUP_ON_DEPLOY || "").toLowerCase() === "true") {
+    run("npm", ["run", "ensure:inr"]);
+    run("npm", ["run", "ensure:collections"]);
+    run("npm", ["run", "seed:promotions"]);
+  }
 
   // Optional first-time catalog bootstrap on Railway:
   // set MEDUSA_BOOTSTRAP_ON_DEPLOY=true in service variables once.
