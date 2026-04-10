@@ -1,3 +1,4 @@
+const path = require('path')
 const { loadEnv, defineConfig } = require('@medusajs/framework/utils')
 
 loadEnv(process.env.NODE_ENV || 'development', process.cwd())
@@ -36,7 +37,7 @@ if (enableGoogleAuth) {
 
 if (enablePhoneAuth) {
   providers.push({
-    resolve: './src/providers/twilio-phone',
+    resolve: path.resolve(__dirname, 'src/providers/twilio-phone'),
     id: phoneProviderId,
     options: {
       accountSid: process.env.TWILIO_ACCOUNT_SID,
