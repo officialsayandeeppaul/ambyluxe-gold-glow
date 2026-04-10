@@ -37,7 +37,7 @@ if (enableGoogleAuth) {
 
 if (enablePhoneAuth) {
   providers.push({
-    resolve: path.resolve(__dirname, 'src/providers/twilio-phone'),
+    resolve: path.resolve(__dirname, '.medusa/server/src/providers/twilio-phone'),
     id: phoneProviderId,
     options: {
       accountSid: process.env.TWILIO_ACCOUNT_SID!,
