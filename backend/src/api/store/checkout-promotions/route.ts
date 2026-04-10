@@ -3,6 +3,20 @@ import { refetchCart } from "@medusajs/medusa/api/store/carts/helpers";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
 import { filterManualPromotionsByCartEligibility } from "./promo-eligibility";
 
+type PromotionTarget = "order" | "items" | "shipping_methods" | null;
+type CheckoutPromotionRow = {
+  id: string;
+  code: string;
+  display_code: string;
+  title: string;
+  subtitle: string;
+  badge: string | null;
+  is_automatic: boolean;
+  promotion_type: string;
+  sort_order: number;
+  application_target: PromotionTarget;
+};
+
 /**
  * GET /store/checkout-promotions
  * Active promotions for the storefront coupon list — fully driven by DB / Admin (no hardcoded codes).
@@ -116,7 +130,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
       filters: { status: "active" },
     });
 
-    const list = (rows ?? [])
+    const list: CheckoutPromotionRow[] = (rows ?? [])
       .filter((r) => {
         const row = r as { deleted_at?: unknown; code?: unknown };
         if (row.deleted_at != null && row.deleted_at !== "") return false;
@@ -153,7 +167,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
         const sort_order = readMetaNumber(meta, "storefront_sort_order") ?? 0;
 
         const tt = row.application_method?.target_type;
-        const application_target =
+        const application_target: PromotionTarget =
           tt === "order" || tt === "items" || tt === "shipping_methods" ? tt : null;
 
         return {

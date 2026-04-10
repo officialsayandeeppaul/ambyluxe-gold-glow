@@ -1,5 +1,6 @@
 import type { ExecArgs } from "@medusajs/framework/types";
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils";
+import type { UpdateInventoryItemInput } from "@medusajs/types";
 import {
   updateInventoryItemsWorkflow,
   updateProductVariantsWorkflow,
@@ -108,14 +109,17 @@ async function syncLinkedInventoryPhysicalFromProduct(
 
   const items = collectInventoryItemsFromVariantRow(data?.[0]);
   const seen = new Set<string>();
-  const updates: Record<string, unknown>[] = [];
+  const updates: UpdateInventoryItemInput[] = [];
 
   for (const inv of items) {
     if (!inv.id || seen.has(inv.id)) continue;
     seen.add(inv.id);
     const patch = physicalPatchFromProduct(productPhys, inv);
     if (!patch) continue;
-    updates.push({ id: inv.id, ...patch });
+    updates.push({
+      id: inv.id,
+      ...(patch as Omit<UpdateInventoryItemInput, "id">),
+    });
   }
 
   if (!updates.length) return;

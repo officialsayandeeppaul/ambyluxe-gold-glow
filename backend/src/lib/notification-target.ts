@@ -6,7 +6,9 @@ export async function resolveNotificationTargetFromStoreAuth(req: MedusaRequest)
   customer_id?: string;
   email?: string;
 } | null> {
-  const actorId = req.auth_context?.actor_id?.trim();
+  const actorId = (
+    req as MedusaRequest & { auth_context?: { actor_id?: string } }
+  ).auth_context?.actor_id?.trim();
   if (!actorId) return null;
 
   let email: string | undefined;

@@ -66,6 +66,10 @@ type InitBody = {
  * (sgftech provider reads the cart from `input.context.extra` during initiatePayment).
  */
 export async function POST(req: MedusaRequest, res: MedusaResponse) {
+  const actorId =
+    ((req as MedusaRequest & { auth_context?: { actor_id?: string } }).auth_context
+      ?.actor_id ?? "") || undefined;
+
   const collectionId = req.params.id as string;
   const { provider_id, data } = (req.body ?? {}) as InitBody;
 
@@ -115,7 +119,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     input: {
       payment_collection_id: collectionId,
       provider_id,
-      customer_id: req.auth_context?.actor_id,
+      customer_id: actorId,
       data: data ?? {},
       context: {
         extra: cart,
