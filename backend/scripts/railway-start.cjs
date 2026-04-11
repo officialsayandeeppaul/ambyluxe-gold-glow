@@ -20,16 +20,17 @@ function main() {
   run("npm", ["run", "db:migrate"]);
 
   // Optional setup pass (collections/promotions/INR) for controlled maintenance deploys.
+  // Use *:prod scripts: Docker image runs `npm prune --omit=dev`, so `.ts` exec fails (no SWC/ts-node).
   if ((process.env.MEDUSA_SETUP_ON_DEPLOY || "").toLowerCase() === "true") {
-    run("npm", ["run", "ensure:inr"]);
-    run("npm", ["run", "ensure:collections"]);
-    run("npm", ["run", "seed:promotions"]);
+    run("npm", ["run", "ensure:inr:prod"]);
+    run("npm", ["run", "ensure:collections:prod"]);
+    run("npm", ["run", "seed:promotions:prod"]);
   }
 
   // Optional first-time catalog bootstrap on Railway:
   // set MEDUSA_BOOTSTRAP_ON_DEPLOY=true in service variables once.
   if ((process.env.MEDUSA_BOOTSTRAP_ON_DEPLOY || "").toLowerCase() === "true") {
-    run("npm", ["run", "seed"]);
+    run("npm", ["run", "seed:prod"]);
   }
 
   // Some Railway boots may miss admin artifacts in runtime image.
