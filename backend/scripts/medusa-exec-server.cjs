@@ -17,9 +17,21 @@ if (!rel) {
 }
 const abs = join(serverDir, rel);
 if (!existsSync(abs)) {
-  console.error(
-    `[medusa-exec-server] missing ${abs} — run "npm run build" in backend first`,
-  );
+  const sourceTs = join(root, rel.replace(/\.js$/i, ".ts"));
+  const hasSource = existsSync(sourceTs);
+  console.error(`[medusa-exec-server] missing compiled script:\n  ${abs}`);
+  if (hasSource) {
+    console.error(
+      "The TypeScript source exists but was not emitted into .medusa/server (stale Docker image).\n" +
+        "Fix: trigger a fresh Railway deploy from latest main (rebuild image), or in this container run:\n" +
+        "  npm run build   # needs RAM; may take several minutes\n" +
+        "Then retry this command.",
+    );
+  } else {
+    console.error(
+      'Run "npm run build" in backend locally, or deploy a commit that includes this script.',
+    );
+  }
   process.exit(1);
 }
 const cli = join(root, "node_modules", "@medusajs", "cli", "cli.js");

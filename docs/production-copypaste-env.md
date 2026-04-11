@@ -59,6 +59,8 @@ MEDUSA_GOOGLE_CALLBACK_URL=https://www.sayandeep.store/auth/callback
   cd /app && node ./scripts/medusa-exec-server.cjs src/scripts/backfill-seed-storefront-urls.js
   ```
 
+  If you see **missing … backfill-seed-storefront-urls.js**, the running image was built **before** that script existed or used a **stale build cache**. **Redeploy** on Railway (prefer “clear build cache” if available), or run **`npm run build`** once inside the container (slow, needs memory) and retry.
+
   Or locally: `npm run backfill:seed-storefront-urls` with `STORE_PUBLIC_URL` set.
 
 Optional override: **`SEED_STOREFRONT_BASE_URL`** (same value as storefront origin) if you want image base different from `STORE_PUBLIC_URL`.
