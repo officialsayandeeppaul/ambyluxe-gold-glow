@@ -31,6 +31,7 @@ import {
 } from "@medusajs/medusa/core-flows";
 import { ApiKey } from "../../.medusa/types/query-entry-points";
 import { inrPaiseFromRupeesMajor } from "../lib/seed-catalog-inr-prices";
+import { storefrontProductImageUrl as storefrontProductImage } from "../lib/seed-storefront-base";
 
 const updateStoreCurrencies = createWorkflow(
   "update-store-currencies",
@@ -59,16 +60,6 @@ const updateStoreCurrencies = createWorkflow(
     return new WorkflowResponse(stores);
   }
 );
-
-/** Base URL for storefront `public/images/products/*` served by Vite (default port 8080). */
-const STOREFRONT_IMG_BASE =
-  (typeof process !== "undefined" &&
-    process.env?.SEED_STOREFRONT_BASE_URL?.replace(/\/$/, "")) ||
-  "http://localhost:8080";
-
-function storefrontProductImage(filename: string): string {
-  return `${STOREFRONT_IMG_BASE}/images/products/${filename}`;
-}
 
 /** INR variant prices in paise (100 paise = ₹1). `rupeesMajor` is the shelf price in rupees. */
 function inrOnly(rupeesMajor: number) {

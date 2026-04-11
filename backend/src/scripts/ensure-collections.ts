@@ -5,16 +5,7 @@ import {
   createCollectionsWorkflow,
   updateCollectionsWorkflow,
 } from "@medusajs/medusa/core-flows";
-
-/** Same base as seed — hero image URLs for the storefront. */
-const STOREFRONT_IMG_BASE =
-  (typeof process !== "undefined" &&
-    process.env?.SEED_STOREFRONT_BASE_URL?.replace(/\/$/, "")) ||
-  "http://localhost:8080";
-
-function storefrontProductImage(filename: string): string {
-  return `${STOREFRONT_IMG_BASE}/images/products/${filename}`;
-}
+import { storefrontProductImageUrl as storefrontProductImage } from "../lib/seed-storefront-base";
 
 type ColDef = {
   handle: string;

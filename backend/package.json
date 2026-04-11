@@ -33,6 +33,8 @@
     "backfill:variant-sku": "medusa exec ./src/scripts/backfill-variant-sku.ts",
     "backfill:variant-physical": "medusa exec ./src/scripts/backfill-variant-physical-from-product.ts",
     "backfill:seed-inr-prices": "medusa exec ./src/scripts/backfill-seed-inr-prices.ts",
+    "backfill:seed-storefront-urls": "medusa exec ./src/scripts/backfill-seed-storefront-urls.ts",
+    "backfill:seed-storefront-urls:prod": "node ./scripts/medusa-exec-server.cjs src/scripts/backfill-seed-storefront-urls.js",
     "backfill:product-handles": "medusa exec ./src/scripts/backfill-product-handles.ts",
     "start": "medusa start -H 0.0.0.0 -p 9000",
     "start:railway": "node ./scripts/railway-start.cjs",
