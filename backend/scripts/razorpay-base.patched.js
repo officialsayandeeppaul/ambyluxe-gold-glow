@@ -363,7 +363,7 @@ class RazorpayBase extends utils_1.AbstractPaymentProvider {
             notes: {
                 ...sessionNotes,
                 resource_id: extra?.resource_id ?? "",
-                session_id: input.context.session_id,
+                session_id: input.data?.session_id ?? input.context?.session_id,
                 cart_id: extra?.id
             },
             payment: {

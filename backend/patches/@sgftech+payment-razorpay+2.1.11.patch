@@ -112,7 +112,7 @@ index 4be4602..e55fe80 100644
              case "attempted":
                  return await this.getRazorpayPaymentStatus(paymentIntent, paymentsAttempted);
              default:
-@@ -312,9 +358,14 @@ class RazorpayBase extends utils_1.AbstractPaymentProvider {
+@@ -312,15 +358,20 @@ class RazorpayBase extends utils_1.AbstractPaymentProvider {
              throw new utils_1.MedusaError(utils_1.MedusaErrorTypes.INVALID_ARGUMENT, "razorpay not configured", utils_1.MedusaErrorCodes.CART_INCOMPATIBLE_STATE);
          }
          const sessionNotes = extra?.notes ?? {};
@@ -130,6 +130,13 @@ index 4be4602..e55fe80 100644
          const intentRequest = {
              amount: toPay,
              currency: currency_code.toUpperCase(),
+             notes: {
+                 ...sessionNotes,
+                 resource_id: extra?.resource_id ?? "",
+-                session_id: input.context.session_id,
++                session_id: input.data?.session_id ?? input.context?.session_id,
+                 cart_id: extra?.id
+             },
 @@ -365,6 +416,11 @@ class RazorpayBase extends utils_1.AbstractPaymentProvider {
                  });
              }
