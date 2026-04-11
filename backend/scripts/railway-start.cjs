@@ -45,6 +45,12 @@ function main() {
     });
   }
 
+  const serverDir = join(process.cwd(), ".medusa", "server");
+  const serverPublicAdminIndex = join(serverDir, "public", "admin", "index.html");
+  if (existsSync(serverDir) && existsSync(serverPublicAdminIndex)) {
+    process.chdir(serverDir);
+  }
+
   const port = process.env.PORT || "9000";
   run("npx", ["medusa", "start", "-H", "0.0.0.0", "-p", port]);
 }
