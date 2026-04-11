@@ -1,10 +1,30 @@
 import path from 'path'
+import { existsSync } from 'fs'
 import { loadEnv, defineConfig } from '@medusajs/framework/utils'
 
 loadEnv(process.env.NODE_ENV || 'development', process.cwd())
 
 const googleProviderId = process.env.MEDUSA_GOOGLE_PROVIDER_ID || 'google'
 const phoneProviderId = process.env.MEDUSA_PHONE_PROVIDER_ID || 'phone'
+
+const twilioPhoneProviderPath = [
+  path.resolve(__dirname, '.medusa/server/src/providers/twilio-phone'),
+  path.resolve(process.cwd(), 'src/providers/twilio-phone'),
+  path.resolve(process.cwd(), '.medusa/server/src/providers/twilio-phone'),
+  path.resolve(__dirname, 'src/providers/twilio-phone'),
+].find((p) => existsSync(p))
+
+if (!twilioPhoneProviderPath) {
+  throw new Error(
+    'Cannot locate Twilio phone provider. Checked: ' +
+      [
+        path.resolve(__dirname, '.medusa/server/src/providers/twilio-phone'),
+        path.resolve(process.cwd(), 'src/providers/twilio-phone'),
+        path.resolve(process.cwd(), '.medusa/server/src/providers/twilio-phone'),
+        path.resolve(__dirname, 'src/providers/twilio-phone'),
+      ].join(', ')
+  )
+}
 const enableGoogleAuth = Boolean(
   process.env.MEDUSA_GOOGLE_CLIENT_ID &&
     process.env.MEDUSA_GOOGLE_CLIENT_SECRET &&
@@ -37,7 +57,7 @@ if (enableGoogleAuth) {
 
 if (enablePhoneAuth) {
   providers.push({
-    resolve: path.resolve(__dirname, '.medusa/server/src/providers/twilio-phone'),
+    resolve: twilioPhoneProviderPath,
     id: phoneProviderId,
     options: {
       accountSid: process.env.TWILIO_ACCOUNT_SID!,
