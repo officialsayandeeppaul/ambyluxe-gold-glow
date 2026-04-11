@@ -113,7 +113,11 @@ const config = defineConfig({
   modules,
   plugins: [],
 })
-config.plugins = config.plugins?.filter(
-  (plugin) => plugin.resolve !== '@medusajs/draft-order'
-)
+config.plugins = config.plugins?.filter((plugin) => {
+  if (typeof plugin === 'string') {
+    return plugin !== '@medusajs/draft-order'
+  }
+
+  return plugin.resolve !== '@medusajs/draft-order'
+})
 module.exports = config
