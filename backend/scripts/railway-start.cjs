@@ -20,7 +20,8 @@ function main() {
   run("npm", ["run", "db:migrate"]);
 
   // Optional setup pass (collections/promotions/INR) for controlled maintenance deploys.
-  // Use *:prod scripts: Docker image runs `npm prune --omit=dev`, so `.ts` exec fails (no SWC/ts-node).
+  // Use *:prod scripts: they run `medusa exec` with cwd `.medusa/server` (same as `medusa start`).
+  // From repo root, loaders would pull `src/**/*.ts` without ts-node after `npm prune` → syntax errors.
   if ((process.env.MEDUSA_SETUP_ON_DEPLOY || "").toLowerCase() === "true") {
     run("npm", ["run", "ensure:inr:prod"]);
     run("npm", ["run", "ensure:collections:prod"]);
