@@ -27,3 +27,15 @@ export const LOCALHOST_IMG_PREFIXES = [
   "http://localhost:9000",
   "http://127.0.0.1:9000",
 ];
+
+const LOCALHOST_ORIGIN_RE_G = /\bhttps?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/gi;
+const LOCALHOST_ORIGIN_RE_TEST = /\bhttps?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i;
+
+/** Replace any http(s)://localhost(:port)? or 127.0.0.1 origin with `base` (path/query/hash preserved). */
+export function rewriteLocalhostOriginsToBase(s: string, base: string): string {
+  return s.replace(LOCALHOST_ORIGIN_RE_G, base);
+}
+
+export function stringLooksLikeSeededLocalhostUrl(s: string): boolean {
+  return LOCALHOST_ORIGIN_RE_TEST.test(s);
+}

@@ -4,39 +4,52 @@ import { updateCollectionsWorkflow, updateProductsWorkflow } from "@medusajs/med
 import {
   LOCALHOST_IMG_PREFIXES,
   getStorefrontImageBase,
+  rewriteLocalhostOriginsToBase,
+  stringLooksLikeSeededLocalhostUrl,
 } from "../lib/seed-storefront-base";
 
-function rewriteUrlsInString(s: string, base: string): string {
-  let out = s;
-  for (const prefix of LOCALHOST_IMG_PREFIXES) {
-    out = out.split(prefix).join(base);
+function deepRewriteLocalhostUrls(value: unknown, base: string): unknown {
+  if (typeof value === "string") {
+    return rewriteLocalhostOriginsToBase(value, base);
   }
-  return out;
+  if (Array.isArray(value)) {
+    return value.map((v) => deepRewriteLocalhostUrls(v, base));
+  }
+  if (value && typeof value === "object") {
+    const o = value as Record<string, unknown>;
+    const next: Record<string, unknown> = {};
+    for (const k of Object.keys(o)) {
+      next[k] = deepRewriteLocalhostUrls(o[k], base);
+    }
+    return next;
+  }
+  return value;
 }
 
-function rewriteMetadata(meta: Record<string, unknown> | null | undefined, base: string): Record<string, unknown> | null {
-  if (!meta || typeof meta !== "object") return meta ?? null;
-  const next: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(meta)) {
-    if (typeof v === "string") {
-      next[k] = rewriteUrlsInString(v, base);
-    } else {
-      next[k] = v;
-    }
-  }
-  return next;
-}
+type ProductModuleLike = {
+  listProducts: (
+    filters: Record<string, never>,
+    config: { relations: string[]; take: number },
+  ) => Promise<
+    Array<{
+      id: string;
+      handle?: string | null;
+      metadata?: Record<string, unknown> | null;
+      images?: Array<{ url?: string | null }> | null;
+    }>
+  >;
+};
 
 /**
- * Rewrites seeded image URLs (localhost:8080 / :9000) to production storefront base.
+ * Rewrites seeded image URLs (localhost / 127.0.0.1, any port) to production storefront base.
  * Uses STORE_PUBLIC_URL or SEED_STOREFRONT_BASE_URL (see `seed-storefront-base.ts`).
  *
- * Usage (from /backend): `npm run backfill:seed-storefront-urls`
- * Production (Docker): `npm run backfill:seed-storefront-urls:prod` via medusa-exec-server cwd
+ * Uses `listProducts` + `images` relation (graph + `filters: {}` can return 0 rows in some setups).
  */
 export default async function backfillSeedStorefrontUrls({ container }: ExecArgs) {
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER);
   const query = container.resolve(ContainerRegistrationKeys.QUERY);
+  const productModule = container.resolve("product") as ProductModuleLike;
   const base = getStorefrontImageBase();
 
   if (LOCALHOST_IMG_PREFIXES.some((p) => base.startsWith(p) || base.includes("localhost"))) {
@@ -49,44 +62,52 @@ export default async function backfillSeedStorefrontUrls({ container }: ExecArgs
   const { data: collections } = await query.graph({
     entity: "product_collection",
     fields: ["id", "handle", "metadata"],
-    filters: {},
   });
+
+  logger.info(
+    `[backfill-seed-storefront-urls] Loaded ${(collections ?? []).length} collection(s) from graph.`,
+  );
 
   let colUpdated = 0;
   for (const c of collections ?? []) {
     const meta = c.metadata as Record<string, unknown> | null | undefined;
-    if (!meta) continue;
-    const raw = JSON.stringify(meta);
-    const replaced = rewriteUrlsInString(raw, base);
-    if (replaced === raw) continue;
-    const newMeta = JSON.parse(replaced) as Record<string, unknown>;
+    if (!meta || typeof meta !== "object") continue;
+    const nextMeta = deepRewriteLocalhostUrls(meta, base) as Record<string, unknown>;
+    if (JSON.stringify(meta) === JSON.stringify(nextMeta)) continue;
     await updateCollectionsWorkflow(container).run({
       input: {
         selector: { id: c.id },
-        update: { metadata: newMeta },
+        update: { metadata: nextMeta },
       },
     });
     colUpdated += 1;
     logger.info(`[backfill-seed-storefront-urls] collection ${c.handle ?? c.id} metadata updated`);
   }
 
-  const { data: products } = await query.graph({
-    entity: "product",
-    fields: ["id", "handle", "metadata", "images.url"],
-    filters: {},
-  });
+  const products = await productModule.listProducts(
+    {},
+    { relations: ["images"], take: 10_000 },
+  );
+
+  logger.info(`[backfill-seed-storefront-urls] Loaded ${products.length} product(s) via product module.`);
 
   let prodUpdated = 0;
-  for (const p of products ?? []) {
-    const images = (p as { images?: { url?: string | null }[] }).images ?? [];
-    const meta = p.metadata as Record<string, unknown> | null | undefined;
+  for (const p of products) {
+    const images = p.images ?? [];
+    const meta = p.metadata;
 
-    const metaNext = rewriteMetadata(meta, base);
-    const metaChanged = JSON.stringify(meta ?? {}) !== JSON.stringify(metaNext ?? {});
+    const metaNext =
+      meta && typeof meta === "object"
+        ? (deepRewriteLocalhostUrls(meta, base) as Record<string, unknown>)
+        : meta;
+    const metaChanged =
+      meta && typeof meta === "object"
+        ? JSON.stringify(meta) !== JSON.stringify(metaNext)
+        : false;
 
     const imgChanged = images.some((img) => {
       const u = img.url?.trim() ?? "";
-      return Boolean(u && LOCALHOST_IMG_PREFIXES.some((p) => u.startsWith(p)));
+      return Boolean(u && stringLooksLikeSeededLocalhostUrl(u));
     });
 
     if (!imgChanged && !metaChanged) continue;
@@ -95,12 +116,14 @@ export default async function backfillSeedStorefrontUrls({ container }: ExecArgs
       metadata?: Record<string, unknown>;
       images?: { url: string }[];
     } = {};
-    if (metaChanged && metaNext) updatePayload.metadata = metaNext;
+    if (metaChanged && metaNext && typeof metaNext === "object") {
+      updatePayload.metadata = metaNext;
+    }
     if (imgChanged) {
       updatePayload.images = images
         .map((img) => {
           const u = img.url?.trim() ?? "";
-          return { url: u ? rewriteUrlsInString(u, base) : u };
+          return { url: u ? rewriteLocalhostOriginsToBase(u, base) : u };
         })
         .filter((row) => row.url);
     }
@@ -112,7 +135,7 @@ export default async function backfillSeedStorefrontUrls({ container }: ExecArgs
       },
     });
     prodUpdated += 1;
-    logger.info(`[backfill-seed-storefront-urls] product ${(p as { handle?: string }).handle ?? p.id} updated`);
+    logger.info(`[backfill-seed-storefront-urls] product ${p.handle ?? p.id} updated`);
   }
 
   logger.info(
