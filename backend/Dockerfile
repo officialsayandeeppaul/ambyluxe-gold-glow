@@ -12,6 +12,9 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json ./
+# patch-package runs on postinstall; patches/ must exist or Razorpay stays unpatched
+# (Medusa 2.13+ then breaks authorize → "`order_id` is mandatory").
+COPY patches ./patches
 ENV NPM_CONFIG_AUDIT=false NPM_CONFIG_FUND=false NPM_CONFIG_PROGRESS=false
 RUN npm ci --no-audit --no-fund
 
