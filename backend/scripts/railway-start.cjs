@@ -34,7 +34,7 @@ function main() {
 
   // Some Railway boots may miss admin artifacts in runtime image.
   // Build only in that case, with a larger heap to prevent OOM.
-  const adminIndex = join(process.cwd(), ".medusa", "server", "public", "admin", "index.html");
+  const adminIndex = join(process.cwd(), "public", "admin", "index.html");
   if (!existsSync(adminIndex)) {
     run("npm", ["run", "build"], {
       NODE_OPTIONS: process.env.NODE_OPTIONS || "--max-old-space-size=1536",
