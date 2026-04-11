@@ -13,7 +13,7 @@
     "medusa"
   ],
   "scripts": {
-    "postinstall": "patch-package --exclude '^@medusajs/dashboard$'",
+    "postinstall": "patch-package",
     "build": "medusa build",
     "db:migrate": "medusa db:migrate",
     "deploy:prepare": "npm run db:migrate && npm run ensure:inr && npm run ensure:collections && npm run seed:promotions",

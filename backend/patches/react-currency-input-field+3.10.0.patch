@@ -1,26 +1,40 @@
 diff --git a/node_modules/react-currency-input-field/dist/index.esm.js b/node_modules/react-currency-input-field/dist/index.esm.js
-index c05f8de..9b8da70 100644
+index c05f8de..deca177 100644
 --- a/node_modules/react-currency-input-field/dist/index.esm.js
 +++ b/node_modules/react-currency-input-field/dist/index.esm.js
-@@ -193,7 +193,7 @@ var formatValue = function (options) {
+@@ -193,9 +193,13 @@ var formatValue = function (options) {
          value = '0' + value;
      }
      var _c = intlConfig || {}, locale = _c.locale, currency = _c.currency, formatOptions = __rest(_c, ["locale", "currency"]);
 -    var defaultNumberFormatOptions = __assign(__assign({}, formatOptions), { minimumFractionDigits: decimalScale || 0, maximumFractionDigits: 20 });
 +    var defaultNumberFormatOptions = __assign(__assign({}, formatOptions), { minimumFractionDigits: 0, maximumFractionDigits: decimalScale !== void 0 ? decimalScale : 20 });
      var numberFormatter = intlConfig
-         ? new Intl.NumberFormat(locale, __assign(__assign({}, defaultNumberFormatOptions), (currency && { style: 'currency', currency: currency })))
+-        ? new Intl.NumberFormat(locale, __assign(__assign({}, defaultNumberFormatOptions), (currency && { style: 'currency', currency: currency })))
++        ? new Intl.NumberFormat(locale, __assign(__assign({}, defaultNumberFormatOptions), currency
++            ? String(currency).toUpperCase() === "INR"
++                ? { style: "decimal", useGrouping: true }
++                : { style: "currency", currency: currency }
++            : {}))
          : new Intl.NumberFormat(undefined, defaultNumberFormatOptions);
+     var parts = numberFormatter.formatToParts(Number(value));
+     var formatted = replaceParts(parts, options);
 diff --git a/node_modules/react-currency-input-field/dist/index.js b/node_modules/react-currency-input-field/dist/index.js
-index a9b6798..9cd812e 100644
+index a9b6798..6bc3f6d 100644
 --- a/node_modules/react-currency-input-field/dist/index.js
 +++ b/node_modules/react-currency-input-field/dist/index.js
-@@ -201,7 +201,7 @@
+@@ -201,9 +201,13 @@
            value = '0' + value;
        }
        var _c = intlConfig || {}, locale = _c.locale, currency = _c.currency, formatOptions = __rest(_c, ["locale", "currency"]);
 -      var defaultNumberFormatOptions = __assign(__assign({}, formatOptions), { minimumFractionDigits: decimalScale || 0, maximumFractionDigits: 20 });
 +      var defaultNumberFormatOptions = __assign(__assign({}, formatOptions), { minimumFractionDigits: 0, maximumFractionDigits: decimalScale !== void 0 ? decimalScale : 20 });
        var numberFormatter = intlConfig
-           ? new Intl.NumberFormat(locale, __assign(__assign({}, defaultNumberFormatOptions), (currency && { style: 'currency', currency: currency })))
+-          ? new Intl.NumberFormat(locale, __assign(__assign({}, defaultNumberFormatOptions), (currency && { style: 'currency', currency: currency })))
++          ? new Intl.NumberFormat(locale, __assign(__assign({}, defaultNumberFormatOptions), currency
++              ? String(currency).toUpperCase() === "INR"
++                  ? { style: "decimal", useGrouping: true }
++                  : { style: "currency", currency: currency }
++              : {}))
            : new Intl.NumberFormat(undefined, defaultNumberFormatOptions);
+       var parts = numberFormatter.formatToParts(Number(value));
+       var formatted = replaceParts(parts, options);
