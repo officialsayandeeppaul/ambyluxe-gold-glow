@@ -94,7 +94,7 @@ if (enableRazorpay) {
   })
 }
 
-module.exports = defineConfig({
+const config = defineConfig({
   projectConfig: {
     databaseUrl: process.env.DATABASE_URL,
     redisUrl: process.env.REDIS_URL,
@@ -111,4 +111,9 @@ module.exports = defineConfig({
     }
   },
   modules,
+  plugins: [],
 })
+config.plugins = config.plugins?.filter(
+  (plugin) => plugin.resolve !== '@medusajs/draft-order'
+)
+module.exports = config
