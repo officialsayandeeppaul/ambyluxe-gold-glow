@@ -41,11 +41,15 @@ export function storefrontMajorPriceToMedusaMinor(
   return Math.round(major * 100);
 }
 
-/** Set `VITE_MEDUSA_INR_AMBIGUOUS_HEURISTIC=false` to always use paise ÷ 100 (strict Medusa). */
+/**
+ * Strict Medusa is the default: INR API amounts are **paise**, always ÷ 100 for display.
+ * Set `VITE_MEDUSA_INR_AMBIGUOUS_HEURISTIC=true` only if you still have legacy rows where the
+ * minor field was saved as whole rupees and need the old compare-at-MRP ratio guess (can break
+ * PDP/cart vs checkout when MRP is large and the real price is small in paise).
+ */
 function inrAmbiguousHeuristicEnabled(): boolean {
   const v = import.meta.env.VITE_MEDUSA_INR_AMBIGUOUS_HEURISTIC?.trim().toLowerCase();
-  if (v === 'false' || v === '0') return false;
-  return true;
+  return v === 'true' || v === '1';
 }
 
 /**

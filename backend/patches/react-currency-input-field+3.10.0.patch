@@ -1,5 +1,5 @@
 diff --git a/node_modules/react-currency-input-field/dist/index.esm.js b/node_modules/react-currency-input-field/dist/index.esm.js
-index c05f8de..deca177 100644
+index c05f8de..9b93cba 100644
 --- a/node_modules/react-currency-input-field/dist/index.esm.js
 +++ b/node_modules/react-currency-input-field/dist/index.esm.js
 @@ -193,9 +193,13 @@ var formatValue = function (options) {
@@ -18,8 +18,29 @@ index c05f8de..deca177 100644
          : new Intl.NumberFormat(undefined, defaultNumberFormatOptions);
      var parts = numberFormatter.formatToParts(Number(value));
      var formatted = replaceParts(parts, options);
+@@ -289,6 +293,20 @@ var defaultConfig = {
+  */
+ var getLocaleConfig = function (intlConfig) {
+     var _a = intlConfig || {}, locale = _a.locale, currency = _a.currency, formatOptions = __rest(_a, ["locale", "currency"]);
++    if (currency && String(currency).toUpperCase() === "INR") {
++        var numberFormatterInr = locale
++            ? new Intl.NumberFormat(locale, __assign(__assign({}, formatOptions), { style: "decimal", useGrouping: true }))
++            : new Intl.NumberFormat();
++        return numberFormatterInr.formatToParts(1000.1).reduce(function (prev, curr) {
++            if (curr.type === 'group') {
++                return __assign(__assign({}, prev), { groupSeparator: curr.value });
++            }
++            if (curr.type === 'decimal') {
++                return __assign(__assign({}, prev), { decimalSeparator: curr.value });
++            }
++            return prev;
++        }, defaultConfig);
++    }
+     var numberFormatter = locale
+         ? new Intl.NumberFormat(locale, __assign(__assign({}, formatOptions), (currency && { currency: currency, style: 'currency' })))
+         : new Intl.NumberFormat();
 diff --git a/node_modules/react-currency-input-field/dist/index.js b/node_modules/react-currency-input-field/dist/index.js
-index a9b6798..6bc3f6d 100644
+index a9b6798..e45ecff 100644
 --- a/node_modules/react-currency-input-field/dist/index.js
 +++ b/node_modules/react-currency-input-field/dist/index.js
 @@ -201,9 +201,13 @@
@@ -38,3 +59,24 @@ index a9b6798..6bc3f6d 100644
            : new Intl.NumberFormat(undefined, defaultNumberFormatOptions);
        var parts = numberFormatter.formatToParts(Number(value));
        var formatted = replaceParts(parts, options);
+@@ -297,6 +301,20 @@
+    */
+   var getLocaleConfig = function (intlConfig) {
+       var _a = intlConfig || {}, locale = _a.locale, currency = _a.currency, formatOptions = __rest(_a, ["locale", "currency"]);
++      if (currency && String(currency).toUpperCase() === "INR") {
++          var numberFormatterInr = locale
++              ? new Intl.NumberFormat(locale, __assign(__assign({}, formatOptions), { style: "decimal", useGrouping: true }))
++              : new Intl.NumberFormat();
++          return numberFormatterInr.formatToParts(1000.1).reduce(function (prev, curr) {
++              if (curr.type === 'group') {
++                  return __assign(__assign({}, prev), { groupSeparator: curr.value });
++              }
++              if (curr.type === 'decimal') {
++                  return __assign(__assign({}, prev), { decimalSeparator: curr.value });
++              }
++              return prev;
++          }, defaultConfig);
++      }
+       var numberFormatter = locale
+           ? new Intl.NumberFormat(locale, __assign(__assign({}, formatOptions), (currency && { currency: currency, style: 'currency' })))
+           : new Intl.NumberFormat();
